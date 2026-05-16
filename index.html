@@ -54,7 +54,8 @@
                 <i data-lucide="layout-dashboard" class="text-primary w-7 h-7"></i>
                 ระบบติดตามการวิพากษ์รายวิชา
             </h1>
-            <p class="text-slate-500 text-sm mt-1">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
+            <h2 class="text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
+            <p class="text-slate-500 text-sm mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
         <div class="flex items-center gap-3">
             <select id="termFilter" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none shadow-sm cursor-pointer">
@@ -155,9 +156,9 @@
                         <th class="px-6 py-4">ชื่อรายวิชา</th>
                         <th class="px-6 py-4">ชั้นปี</th>
                         <th class="px-6 py-4">ผู้รับผิดชอบ</th>
-                        <th class="px-6 py-4">อัปโหลด มคอ.</th>
                         <th class="px-6 py-4">ลงเวลาวิพากษ์</th>
                         <th class="px-6 py-4">สถานะการนำเสนอ</th>
+                        <th class="px-6 py-4">อัปโหลด มคอ.</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
@@ -172,8 +173,9 @@
 
     <!-- Footer -->
     <footer class="mt-8 mb-4 text-center text-xs text-slate-500">
-        <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา. All rights reserved.</p>
-        <p class="mt-1">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span></p>
+        <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา</p>
+        <p class="mt-0.5">สาขาวิชาสาธารณสุขชุมชน</p>
+        <p class="mt-1.5">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span></p>
     </footer>
 
     <script>
@@ -276,9 +278,9 @@
                         <td class="px-6 py-4">${item.name}</td>
                         <td class="px-6 py-4 whitespace-nowrap">ปี ${item.year}</td>
                         <td class="px-6 py-4">${item.instructor}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${uploadBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${bookingBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${presentBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${uploadBadge}</td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML('beforeend', row);
