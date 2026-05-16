@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Dashboard - ระบบติดตามการวิพากษ์รายวิชา</title>
+    
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- PapaParse (CDN) สำหรับอ่านไฟล์ CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        // ตั้งค่า Tailwind ให้ใช้ฟอนต์ Prompt
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563eb', // Blue-600
+                        secondary: '#64748b', // Slate-500
+                        accent: '#f8fafc', // Slate-50
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #f1f5f9; }
+        .card { background-color: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
+        /* ซ่อน Scrollbar แต่ยัง Scroll ได้ */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased font-sans p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-semibold text-slate-900 flex items-center gap-2">
+                <i data-lucide="layout-dashboard" class="text-primary w-7 h-7"></i>
+                ระบบติดตามการวิพากษ์รายวิชา
+            </h1>
+            <p class="text-slate-500 text-sm mt-1">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <select id="termFilter" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none shadow-sm cursor-pointer">
+                <option value="all">ปีการศึกษาทั้งหมด</option>
+                <option value="1/2569" selected>ภาคการศึกษา 1/2569</option>
+                <option value="2/2568">ภาคการศึกษา 2/2568</option>
+            </select>
+            <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center gap-2 text-sm">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span class="hidden sm:inline">ส่งออกรายงาน</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Card 1 -->
+        <div class="card p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-primary">
+                <i data-lucide="book-open" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-sm text-slate-500 font-medium">จำนวนรายวิชาทั้งหมด</p>
+                <p class="text-3xl font-semibold text-slate-800 mt-1" id="kpi-total">0</p>
+            </div>
+        </div>
+        <!-- Card 2 -->
+        <div class="card p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <i data-lucide="check-circle" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-sm text-slate-500 font-medium">อัปโหลด มคอ. แล้ว</p>
+                <p class="text-3xl font-semibold text-emerald-600 mt-1" id="kpi-uploaded">0</p>
+            </div>
+        </div>
+        <!-- Card 3 -->
+        <div class="card p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                <i data-lucide="clock" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-sm text-slate-500 font-medium">รอดำเนินการ</p>
+                <p class="text-3xl font-semibold text-rose-600 mt-1" id="kpi-pending">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <!-- Doughnut Chart -->
+        <div class="card p-6 lg:col-span-1">
+            <h2 class="text-lg font-medium text-slate-800 mb-4">สถานะการส่งแผนการสอน</h2>
+            <div class="relative h-64 w-full flex items-center justify-center">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+        <!-- Bar Chart -->
+        <div class="card p-6 lg:col-span-2">
+            <h2 class="text-lg font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
+            <div class="relative h-64 w-full">
+                <canvas id="yearChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Table Section -->
+    <div class="card overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 class="text-lg font-medium text-slate-800">ตารางสรุปการดำเนินการรายวิชา</h2>
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+                <input type="text" id="searchInput" placeholder="ค้นหารายวิชา, อาจารย์..." class="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary w-full sm:w-64">
+            </div>
+        </div>
+        <div class="overflow-x-auto no-scrollbar">
+            <table class="w-full text-left text-sm text-slate-600">
+                <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                    <tr>
+                        <th class="px-6 py-4">รหัสวิชา</th>
+                        <th class="px-6 py-4">ชื่อรายวิชา</th>
+                        <th class="px-6 py-4">ชั้นปี</th>
+                        <th class="px-6 py-4">ผู้รับผิดชอบ</th>
+                        <th class="px-6 py-4">อัปโหลด มคอ.</th>
+                        <th class="px-6 py-4">ลงเวลาวิพากษ์</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody" class="divide-y divide-slate-100">
+                    <!-- Data will be injected here via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 text-xs text-slate-500 text-center">
+            อัปเดตข้อมูลล่าสุด: <span id="lastUpdate"></span>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        let globalData = []; // เก็บข้อมูลที่ดึงมาจาก Google Sheets
+
+        // 1. ฟังก์ชันดึงข้อมูลจาก Google Sheets (CSV) แบบเรียลไทม์
+        async function loadData() {
+            // ลิงก์ CSV จาก Google Sheets ของคุณ
+            const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnyAkoSHkzZLSppamsaqI8WyuwzGNwVT8a6zdXe9bCP8Ju5Z265rEsXq5MAqgHdHUcaw3m9JS4nSGX/pub?gid=486231050&single=true&output=csv";
+            
+            try {
+                document.getElementById('lastUpdate').innerText = "กำลังโหลดข้อมูล...";
+                
+                const response = await fetch(csvUrl);
+                const csvText = await response.text();
+                
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        // แปลงข้อมูลจาก CSV ให้อยู่ในรูปแบบที่ Dashboard เข้าใจ
+                        globalData = results.data.map(row => {
+                            const id = row['รหัสวิชา'] || row['รหัส'] || '-';
+                            const name = row['ชื่อรายวิชา'] || row['รายวิชา'] || '-';
+                            
+                            // ดึงตัวเลขชั้นปี
+                            const yearStr = row['ชั้นปี'] || '1';
+                            const year = parseInt(yearStr.replace(/\D/g, '')) || 1;
+                            
+                            // ดึงชื่ออาจารย์ (รองรับชื่อคอลัมน์หลายรูปแบบ)
+                            const instructor = row['ผู้รับผิดชอบรายวิชา 2569'] || row['ผู้รับผิดชอบรายวิชา'] || row['ผู้รับผิดชอบ'] || '-';
+                            
+                            // เช็กสถานะอัปโหลดไฟล์
+                            const uploadStr = (row['อัพไฟล์'] || '').toString().trim().toUpperCase();
+                            const upload = uploadStr === 'TRUE';
+                            
+                            // เช็กสถานะลงเวลา
+                            const bookingStr = (row['ลงเวลา'] || row['การนำเสนอ'] || '').toString().trim().toUpperCase();
+                            const booking = bookingStr === 'TRUE' || bookingStr.includes('แล้ว');
+
+                            return { id, name, year, instructor, upload, booking };
+                        }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
+                        
+                        document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
+                        updateDashboard(globalData); // สั่งวาด Dashboard ใหม่
+                    }
+                });
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                document.getElementById('lastUpdate').innerText = "เกิดข้อผิดพลาดในการดึงข้อมูล";
+            }
+        }
+
+        // 2. Logic for rendering
+        function updateDashboard(data) {
+            // Calculate KPIs
+            const total = data.length;
+            const uploaded = data.filter(d => d.upload).length;
+            const pending = total - uploaded;
+
+            // Animate numbers
+            document.getElementById('kpi-total').innerText = total;
+            document.getElementById('kpi-uploaded').innerText = uploaded;
+            document.getElementById('kpi-pending').innerText = pending;
+
+            // Render Table
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            data.forEach(item => {
+                const uploadBadge = item.upload 
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>สำเร็จ</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>รอดำเนินการ</span>`;
+                
+                const bookingBadge = item.booking 
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>ลงเวลาแล้ว</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>ยังไม่ลงเวลา</span>`;
+
+                const row = `
+                    <tr class="hover:bg-slate-50/50 transition">
+                        <td class="px-6 py-4 font-medium text-slate-900">${item.id}</td>
+                        <td class="px-6 py-4">${item.name}</td>
+                        <td class="px-6 py-4">ปี ${item.year}</td>
+                        <td class="px-6 py-4">${item.instructor}</td>
+                        <td class="px-6 py-4">${uploadBadge}</td>
+                        <td class="px-6 py-4">${bookingBadge}</td>
+                    </tr>
+                `;
+                tableBody.insertAdjacentHTML('beforeend', row);
+            });
+
+            // Update Charts
+            updateCharts(data);
+        }
+
+        // 3. Chart.js Configuration
+        let statusChartInstance = null;
+        let yearChartInstance = null;
+
+        // Colors for minimalist design
+        const colors = {
+            emerald: '#10b981',
+            rose: '#f43f5e',
+            blue: '#3b82f6',
+            slate200: '#e2e8f0',
+            slate800: '#1e293b'
+        };
+
+        // Common Chart Defaults
+        Chart.defaults.font.family = "'Prompt', sans-serif";
+        Chart.defaults.color = '#64748b';
+
+        function updateCharts(data) {
+            // Data for Doughnut Chart
+            const uploaded = data.filter(d => d.upload).length;
+            const pending = data.length - uploaded;
+
+            if (statusChartInstance) statusChartInstance.destroy();
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['อัปโหลดแล้ว', 'รอดำเนินการ'],
+                    datasets: [{
+                        data: [uploaded, pending],
+                        backgroundColor: [colors.emerald, colors.rose],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8 }
+                    }
+                }
+            });
+
+            // Data for Bar Chart
+            const years = [1, 2, 3, 4];
+            const completedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
+            const pendingByYear = years.map(y => data.filter(d => d.year === y && !d.upload).length);
+
+            if (yearChartInstance) yearChartInstance.destroy();
+            const ctxYear = document.getElementById('yearChart').getContext('2d');
+            yearChartInstance = new Chart(ctxYear, {
+                type: 'bar',
+                data: {
+                    labels: ['ชั้นปีที่ 1', 'ชั้นปีที่ 2', 'ชั้นปีที่ 3', 'ชั้นปีที่ 4'],
+                    datasets: [
+                        {
+                            label: 'อัปโหลดแล้ว',
+                            data: completedByYear,
+                            backgroundColor: colors.emerald,
+                            borderRadius: 4,
+                        },
+                        {
+                            label: 'รอดำเนินการ',
+                            data: pendingByYear,
+                            backgroundColor: colors.slate200,
+                            borderRadius: 4,
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, border: { display: false }, grid: { color: '#f1f5f9' }, beginAtZero: true, ticks: { stepSize: 1 } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8 } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8 }
+                    }
+                }
+            });
+        }
+
+        // 4. Search Functionality
+        document.getElementById('searchInput').addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredData = globalData.filter(item => 
+                item.name.toLowerCase().includes(searchTerm) || 
+                item.id.toLowerCase().includes(searchTerm) ||
+                item.instructor.toLowerCase().includes(searchTerm)
+            );
+            updateDashboard(filteredData);
+        });
+
+        // Initialize App (เริ่มโหลดข้อมูลทันทีที่เปิดหน้าเว็บ)
+        loadData();
+
+        // Auto-refresh: ให้ระบบดึงข้อมูลใหม่ทุกๆ 5 นาที (300,000 มิลลิวินาที) แบบไม่ต้องกด F5
+        setInterval(loadData, 300000);
+
+    </script>
+</body>
+</html>
