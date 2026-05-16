@@ -11,7 +11,7 @@
     <!-- Chart.js (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Chart.js DataLabels Plugin (สำหรับแสดง % บนกราฟโดนัท) -->
+    <!-- Chart.js DataLabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     
     <!-- PapaParse (CDN) สำหรับอ่านไฟล์ CSV -->
@@ -24,7 +24,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <script>
-        // ตั้งค่า Tailwind ให้ใช้ฟอนต์ Prompt
         tailwind.config = {
             theme: {
                 extend: {
@@ -43,7 +42,6 @@
     <style>
         body { background-color: #f1f5f9; }
         .card { background-color: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
-        /* ซ่อน Scrollbar แต่ยัง Scroll ได้ */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -61,7 +59,7 @@
             <p class="text-slate-500 text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
         
-        <!-- ตัวกรองแบบใหม่: เลือกหลายเทอม (Multi-select) -->
+        <!-- ตัวกรอง -->
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto" id="multiSelectContainer">
             <div class="relative w-full sm:w-auto">
                 <button id="multiSelectBtn" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-1 focus:ring-primary focus:border-primary px-4 py-2.5 shadow-sm cursor-pointer min-w-[220px] w-full flex justify-between items-center transition-all hover:bg-slate-50">
@@ -69,10 +67,9 @@
                     <i data-lucide="chevron-down" class="w-5 h-5 ml-2 text-slate-400 shrink-0"></i>
                 </button>
                 
-                <!-- Dropdown หน้าต่าง Checkbox -->
                 <div id="multiSelectDropdown" class="hidden absolute right-0 sm:right-auto sm:left-0 mt-2 w-full sm:w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div class="max-h-64 overflow-y-auto p-2" id="termCheckboxes">
-                        <!-- ตัวเลือกจะถูกสร้างอัตโนมัติที่นี่ -->
+                        <!-- ตัวเลือกจะถูกสร้างอัตโนมัติ -->
                     </div>
                 </div>
             </div>
@@ -85,7 +82,6 @@
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Card 1 -->
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
                 <i data-lucide="book-open" class="w-7 h-7"></i>
@@ -95,7 +91,6 @@
                 <p class="text-4xl font-semibold text-slate-800 mt-1" id="kpi-total">0</p>
             </div>
         </div>
-        <!-- Card 4: จำนวนอาจารย์ -->
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
                 <i data-lucide="users" class="w-7 h-7"></i>
@@ -105,7 +100,6 @@
                 <p class="text-4xl font-semibold text-slate-800 mt-1" id="kpi-instructors">0</p>
             </div>
         </div>
-        <!-- Card 2: อัปโหลดแล้ว (พร้อมร้อยละ) -->
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
                 <i data-lucide="check-circle" class="w-7 h-7"></i>
@@ -118,7 +112,6 @@
                 </div>
             </div>
         </div>
-        <!-- Card 3 -->
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
                 <i data-lucide="clock" class="w-7 h-7"></i>
@@ -132,21 +125,18 @@
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-        <!-- Doughnut Chart 1: สถานะส่งแผน -->
         <div class="card p-6 lg:col-span-1">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="statusChart"></canvas>
             </div>
         </div>
-        <!-- Doughnut Chart 2: สถานะการนำเสนอ -->
         <div class="card p-6 lg:col-span-1">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="presentChart"></canvas>
             </div>
         </div>
-        <!-- Bar Chart -->
         <div class="card p-6 lg:col-span-2">
             <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
             <div class="relative h-64 w-full">
@@ -196,20 +186,14 @@
     </footer>
 
     <script>
-        // Set Current Year in Footer
         document.getElementById('currentYear').innerText = new Date().getFullYear();
-
-        // Initialize Icons
         lucide.createIcons();
-
-        // Register Chart.js Plugin for Data Labels
         Chart.register(ChartDataLabels);
 
-        let globalData = []; // เก็บข้อมูลที่ดึงมาจาก Google Sheets ทั้งหมด
-        let activeTerms = []; // ตัวแปรเก็บรายการเทอมที่ถูกติ๊กเลือก
-        let allAvailableTerms = []; // เทอมที่มีทั้งหมดในระบบ
+        let globalData = [];
+        let activeTerms = [];
+        let allAvailableTerms = [];
 
-        // ควบคุมการเปิดปิด Dropdown Multi-select
         const multiSelectBtn = document.getElementById('multiSelectBtn');
         const multiSelectDropdown = document.getElementById('multiSelectDropdown');
         const multiSelectContainer = document.getElementById('multiSelectContainer');
@@ -225,7 +209,6 @@
             }
         });
 
-        // 1. ฟังก์ชันดึงข้อมูลจาก Google Sheets (CSV)
         async function loadData() {
             const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnyAkoSHkzZLSppamsaqI8WyuwzGNwVT8a6zdXe9bCP8Ju5Z265rEsXq5MAqgHdHUcaw3m9JS4nSGX/pub?gid=486231050&single=true&output=csv";
             
@@ -261,15 +244,14 @@
                             const presentStr = (row['การนำเสนอ'] || row['นำเสนอ'] || '').toString().trim().toUpperCase();
                             const presented = presentStr === 'TRUE' || presentStr.includes('แล้ว');
 
-                            return { id, name, year, instructor, upload, booking, presented, termYear };
+                            // หาคอลัมน์ที่มีลิงก์ไฟล์ (เปลี่ยนชื่อตรงนี้ให้ตรงกับใน Google Sheets ของคุณ)
+                            const fileLink = row['ลิงก์ไฟล์'] || row['Link'] || row['ลิงค์ไฟล์ มคอ.'] || '';
+
+                            return { id, name, year, instructor, upload, booking, presented, termYear, fileLink };
                         }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                         
                         document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
-                        
-                        // สร้างตัวเลือก Dropdown Checkboxes
                         populateTermFilter(globalData);
-                        
-                        // กรองและแสดงผลข้อมูล
                         applyFilters(); 
                     }
                 });
@@ -279,14 +261,9 @@
             }
         }
 
-        // ฟังก์ชันสร้างตัวเลือก Checkbox สำหรับเลือกหลายเทอม
         function populateTermFilter(data) {
             const container = document.getElementById('termCheckboxes');
-            
-            // หาเทอมที่ไม่ซ้ำกันทั้งหมด
             allAvailableTerms = [...new Set(data.map(item => item.termYear))].filter(t => t !== '-');
-            
-            // เรียงลำดับเทอมล่าสุดขึ้นก่อน
             allAvailableTerms.sort((a, b) => {
                 const [termA, yearA] = a.split('/');
                 const [termB, yearB] = b.split('/');
@@ -294,7 +271,6 @@
                 return termB - termA;
             });
 
-            // ถ้าเป็นการโหลดครั้งแรก ให้ตั้งค่าเลือก "เทอมล่าสุด" ให้โดยอัตโนมัติ
             if (!container.dataset.initialized && allAvailableTerms.length > 0) {
                 activeTerms = [allAvailableTerms[0]]; 
                 container.dataset.initialized = "true";
@@ -302,7 +278,6 @@
 
             const isAllSelected = (activeTerms.length === allAvailableTerms.length && allAvailableTerms.length > 0);
 
-            // วาดปุ่ม "เลือกทั้งหมด"
             container.innerHTML = `
                 <label class="flex items-center px-3 py-2.5 hover:bg-slate-50 rounded-lg cursor-pointer mb-1 transition-colors group">
                     <input type="checkbox" id="selectAllTerms" class="accent-blue-600 rounded border-slate-300 w-4 h-4 mr-3" ${isAllSelected ? 'checked' : ''}>
@@ -311,7 +286,6 @@
                 <div class="h-px bg-slate-100 my-1 mx-2"></div>
             `;
             
-            // วาด Checkbox แต่ละเทอม
             allAvailableTerms.forEach(term => {
                 const isChecked = activeTerms.includes(term);
                 container.insertAdjacentHTML('beforeend', `
@@ -324,7 +298,6 @@
 
             updateDropdownLabel();
 
-            // Event Listener: เมื่อติ๊กปุ่ม "เลือกทั้งหมด"
             document.getElementById('selectAllTerms').addEventListener('change', function(e) {
                 const checked = e.target.checked;
                 const checkboxes = document.querySelectorAll('.term-checkbox');
@@ -337,11 +310,9 @@
                 applyFilters();
             });
 
-            // Event Listener: เมื่อติ๊กเลือกเทอมย่อยๆ
             document.querySelectorAll('.term-checkbox').forEach(cb => {
                 cb.addEventListener('change', function() {
                     activeTerms = Array.from(document.querySelectorAll('.term-checkbox:checked')).map(c => c.value);
-                    // อัปเดตปุ่มเลือกทั้งหมดอัตโนมัติ
                     document.getElementById('selectAllTerms').checked = (activeTerms.length === allAvailableTerms.length && allAvailableTerms.length > 0);
                     updateDropdownLabel();
                     applyFilters();
@@ -349,7 +320,6 @@
             });
         }
 
-        // ฟังก์ชันอัปเดตข้อความบนปุ่ม
         function updateDropdownLabel() {
             const label = document.getElementById('multiSelectLabel');
             if (activeTerms.length === 0) {
@@ -367,46 +337,33 @@
             }
         }
 
-        // ฟังก์ชันตัวกรองข้อมูล (ทำงานเมื่อพิมพ์ค้นหา หรือ ติ๊กเลือกเทอม)
         function applyFilters() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-
             const filteredData = globalData.filter(item => {
-                // เช็กเงื่อนไขช่องค้นหา
                 const matchSearch = item.name.toLowerCase().includes(searchTerm) || 
                                     item.id.toLowerCase().includes(searchTerm) ||
                                     item.instructor.toLowerCase().includes(searchTerm);
-                
-                // เช็กว่าเทอมของวิชานี้ อยู่ในลิสต์ที่ติ๊กเลือกไว้หรือไม่
                 const matchTerm = activeTerms.includes(item.termYear);
-                
                 return matchSearch && matchTerm;
             });
-
             updateDashboard(filteredData);
         }
 
-        // Event Listener สำหรับช่องค้นหา
         document.getElementById('searchInput').addEventListener('input', applyFilters);
 
-        // 2. Logic for rendering
         function updateDashboard(data) {
-            // Calculate KPIs
             const total = data.length;
             const uploaded = data.filter(d => d.upload).length;
             const pending = total - uploaded;
-            
             const uploadPercent = total > 0 ? Math.round((uploaded / total) * 100) : 0;
             const uniqueInstructors = new Set(data.map(d => d.instructor).filter(i => i && i !== '-')).size;
 
-            // Animate numbers
             document.getElementById('kpi-total').innerText = total;
             document.getElementById('kpi-instructors').innerText = uniqueInstructors;
             document.getElementById('kpi-uploaded').innerText = uploaded;
             document.getElementById('kpi-uploaded-percent').innerText = `(${uploadPercent}%)`;
             document.getElementById('kpi-pending').innerText = pending;
 
-            // Render Table
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
             
@@ -415,9 +372,17 @@
             }
 
             data.forEach(item => {
-                const uploadBadge = item.upload 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>สำเร็จ</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200"><span class="w-2 h-2 rounded-full bg-rose-500"></span>รอดำเนินการ</span>`;
+                // สร้างปุ่มดูไฟล์ (ถ้ามีลิงก์และอัปโหลดแล้ว)
+                let uploadContent = '';
+                if (item.upload) {
+                    if (item.fileLink && item.fileLink !== '') {
+                        uploadContent = `<a href="${item.fileLink}" target="_blank" class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>สำเร็จ (คลิกเพื่อดูไฟล์)</a>`;
+                    } else {
+                        uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>สำเร็จ</span>`;
+                    }
+                } else {
+                    uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200"><span class="w-2 h-2 rounded-full bg-rose-500"></span>รอดำเนินการ</span>`;
+                }
                 
                 const bookingBadge = item.booking 
                     ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200"><span class="w-2 h-2 rounded-full bg-blue-500"></span>ลงเวลาแล้ว</span>`
@@ -436,17 +401,14 @@
                         <td class="px-6 py-4">${item.instructor}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${bookingBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${presentBadge}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${uploadBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${uploadContent}</td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML('beforeend', row);
             });
-
-            // Update Charts
             updateCharts(data);
         }
 
-        // 3. Chart.js Configuration
         let statusChartInstance = null;
         let presentChartInstance = null;
         let yearChartInstance = null;
@@ -468,12 +430,10 @@
         const percentageFormatter = (value, ctx) => {
             let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
             if (value === 0 || sum === 0) return '';
-            let percentage = Math.round((value * 100) / sum) + "%";
-            return percentage;
+            return Math.round((value * 100) / sum) + "%";
         };
 
         function updateCharts(data) {
-            // --- 1. Doughnut Chart: Upload Status ---
             const uploaded = data.filter(d => d.upload).length;
             const pendingUpload = data.length - uploaded;
 
@@ -497,16 +457,11 @@
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
-                        datalabels: {
-                            color: '#ffffff',
-                            font: { weight: 'bold', size: 16 },
-                            formatter: percentageFormatter
-                        }
+                        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 16 }, formatter: percentageFormatter }
                     }
                 }
             });
 
-            // --- 2. Doughnut Chart: Presentation Status ---
             const presented = data.filter(d => d.presented).length;
             const pendingPresent = data.length - presented;
 
@@ -530,16 +485,11 @@
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
-                        datalabels: {
-                            color: '#ffffff',
-                            font: { weight: 'bold', size: 16 },
-                            formatter: percentageFormatter
-                        }
+                        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 16 }, formatter: percentageFormatter }
                     }
                 }
             });
 
-            // --- 3. Bar Chart: By Year ---
             const years = [1, 2, 3, 4];
             const completedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
             const pendingByYear = years.map(y => data.filter(d => d.year === y && !d.upload).length);
@@ -551,18 +501,8 @@
                 data: {
                     labels: ['ชั้นปีที่ 1', 'ชั้นปีที่ 2', 'ชั้นปีที่ 3', 'ชั้นปีที่ 4'],
                     datasets: [
-                        {
-                            label: 'อัปโหลด มคอ. แล้ว',
-                            data: completedByYear,
-                            backgroundColor: colors.emerald,
-                            borderRadius: 4,
-                        },
-                        {
-                            label: 'รออัปโหลด มคอ.',
-                            data: pendingByYear,
-                            backgroundColor: colors.slate200,
-                            borderRadius: 4,
-                        }
+                        { label: 'อัปโหลด มคอ. แล้ว', data: completedByYear, backgroundColor: colors.emerald, borderRadius: 4 },
+                        { label: 'รออัปโหลด มคอ.', data: pendingByYear, backgroundColor: colors.slate200, borderRadius: 4 }
                     ]
                 },
                 options: {
@@ -575,18 +515,14 @@
                     plugins: {
                         legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
-                        datalabels: {
-                            display: false 
-                        }
+                        datalabels: { display: false }
                     }
                 }
             });
         }
 
-        // Initialize App
         loadData();
-        setInterval(loadData, 300000); // อัปเดตทุกๆ 5 นาที
-
+        setInterval(loadData, 300000);
     </script>
 </body>
 </html>
