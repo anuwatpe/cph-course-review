@@ -5,16 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Dashboard - ระบบติดตามการวิพากษ์รายวิชา</title>
     
+    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Chart.js (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Chart.js DataLabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     
+    <!-- PapaParse (CDN) สำหรับอ่านไฟล์ CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
+    <!-- Google Fonts: Prompt -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <script>
@@ -42,6 +48,7 @@
 </head>
 <body class="text-slate-800 antialiased font-sans p-4 md:p-8">
 
+    <!-- Header -->
     <header class="mb-8 flex flex-col md:flex-row md:items-start md:items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl font-semibold text-slate-900 flex items-center gap-2">
@@ -52,6 +59,7 @@
             <p class="text-slate-500 text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
         
+        <!-- ตัวกรอง และ ปุ่ม Action -->
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto" id="multiSelectContainer">
             <div class="relative w-full sm:w-auto">
                 <button id="multiSelectBtn" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-1 focus:ring-primary focus:border-primary px-4 py-2.5 shadow-sm cursor-pointer min-w-[220px] w-full flex justify-between items-center transition-all hover:bg-slate-50">
@@ -61,17 +69,19 @@
                 
                 <div id="multiSelectDropdown" class="hidden absolute right-0 sm:right-auto sm:left-0 mt-2 w-full sm:w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div class="max-h-64 overflow-y-auto p-2" id="termCheckboxes">
-                        <!-- Checkboxes will be populated here -->
+                        <!-- ตัวเลือกจะถูกสร้างอัตโนมัติ -->
                     </div>
                 </div>
             </div>
-            <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-base w-full sm:w-auto">
-                <i data-lucide="download" class="w-5 h-5"></i>
-                <span class="hidden sm:inline">ส่งออกรายงาน</span>
-            </button>
+            <!-- ปรับแก้ปุ่มตรงนี้ครับ -->
+            <a href="https://docs.google.com/spreadsheets/d/1fquORX-yAnmRZMWwC0Sh6gSlQrDWzpGwHH43_K_SW2E/edit?usp=sharing" target="_blank" class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-base w-full sm:w-auto whitespace-nowrap">
+                <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+                <span>ลงเวลาและอัปโหลดไฟล์ มคอ.</span>
+            </a>
         </div>
     </header>
 
+    <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
@@ -114,19 +124,23 @@
         </div>
     </div>
 
+    <!-- Charts Section -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- 1. กราฟโดนัทชาร์ต สำหรับการลงเวลา -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการลงเวลา</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="bookingChart"></canvas>
             </div>
         </div>
+        <!-- 2. กราฟโดนัทชาร์ต สถานะการนำเสนอ -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="presentChart"></canvas>
             </div>
         </div>
+        <!-- 3. กราฟโดนัทชาร์ต สถานะอัปโหลดแผนฯ -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
@@ -135,6 +149,7 @@
         </div>
     </div>
     
+    <!-- Bar Chart -->
     <div class="grid grid-cols-1 gap-6 mb-8">
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
@@ -144,6 +159,7 @@
         </div>
     </div>
 
+    <!-- Table Section -->
     <div class="card overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 class="text-xl font-medium text-slate-800">ตารางสรุปการดำเนินการรายวิชา</h2>
@@ -176,6 +192,7 @@
         </div>
     </div>
 
+    <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
         <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา. All rights reserved.</p>
         <p class="mt-1.5">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span></p>
@@ -430,7 +447,6 @@
         };
 
         function updateCharts(data) {
-            // --- 1. Doughnut Chart: Booking Status ---
             const booked = data.filter(d => d.booking).length;
             const pendingBooking = data.length - booked;
 
@@ -459,7 +475,6 @@
                 }
             });
 
-            // --- 2. Doughnut Chart: Presentation Status ---
             const presented = data.filter(d => d.presented).length;
             const pendingPresent = data.length - presented;
 
@@ -488,7 +503,6 @@
                 }
             });
 
-            // --- 3. Doughnut Chart: Upload Status ---
             const uploaded = data.filter(d => d.upload).length;
             const pendingUpload = data.length - uploaded;
 
@@ -517,18 +531,14 @@
                 }
             });
 
-            // --- 4. Bar Chart: By Year (Grouped and Stacked showing all 3 steps) ---
             const years = [1, 2, 3, 4];
             
-            // ข้อมูลการลงเวลา (ทำแล้ว / ยังไม่ทำ)
             const bookedByYear = years.map(y => data.filter(d => d.year === y && d.booking).length);
             const pendingBookedByYear = years.map(y => data.filter(d => d.year === y && !d.booking).length);
             
-            // ข้อมูลการนำเสนอ (ทำแล้ว / ยังไม่ทำ)
             const presentedByYear = years.map(y => data.filter(d => d.year === y && d.presented).length);
             const pendingPresentedByYear = years.map(y => data.filter(d => d.year === y && !d.presented).length);
             
-            // ข้อมูลการอัปโหลด (ทำแล้ว / ยังไม่ทำ)
             const uploadedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
             const pendingUploadedByYear = years.map(y => data.filter(d => d.year === y && !d.upload).length);
 
@@ -539,15 +549,12 @@
                 data: {
                     labels: ['ชั้นปีที่ 1', 'ชั้นปีที่ 2', 'ชั้นปีที่ 3', 'ชั้นปีที่ 4'],
                     datasets: [
-                        // Stack 1: ลงเวลา
                         { label: 'ลงเวลาแล้ว', data: bookedByYear, backgroundColor: colors.blue, stack: 'booking', borderRadius: 4 },
                         { label: 'ยังไม่ลงเวลา', data: pendingBookedByYear, backgroundColor: colors.slate200, stack: 'booking', borderRadius: 4 },
                         
-                        // Stack 2: นำเสนอ
                         { label: 'นำเสนอแล้ว', data: presentedByYear, backgroundColor: colors.purple, stack: 'present', borderRadius: 4 },
                         { label: 'ยังไม่นำเสนอ', data: pendingPresentedByYear, backgroundColor: colors.slate200, stack: 'present', borderRadius: 4 },
                         
-                        // Stack 3: อัปโหลด มคอ.
                         { label: 'อัปโหลด มคอ. แล้ว', data: uploadedByYear, backgroundColor: colors.emerald, stack: 'upload', borderRadius: 4 },
                         { label: 'รออัปโหลด มคอ.', data: pendingUploadedByYear, backgroundColor: colors.slate200, stack: 'upload', borderRadius: 4 }
                     ]
@@ -567,14 +574,13 @@
                                 usePointStyle: true, 
                                 boxWidth: 8, 
                                 font: { size: 14 },
-                                // ซ่อนคำว่า "ยังไม่" และ "รอ" ออกจาก Legend เพื่อความสวยงามสะอาดตา (แต่ตอนเอาเมาส์ชี้ Tooltip ยังคงขึ้นปกติ)
                                 filter: function(item, chart) {
                                     return !item.text.includes('ยังไม่') && !item.text.includes('รอ');
                                 }
                             } 
                         },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
-                        datalabels: { display: false } // ปิดการโชว์ % ในกราฟแท่งเพื่อไม่ให้รก
+                        datalabels: { display: false } 
                     }
                 }
             });
