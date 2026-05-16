@@ -51,7 +51,7 @@
 <body class="text-slate-800 antialiased font-sans p-4 md:p-8">
 
     <!-- Header -->
-    <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <header class="mb-8 flex flex-col md:flex-row md:items-start md:items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl font-semibold text-slate-900 flex items-center gap-2">
                 <i data-lucide="layout-dashboard" class="text-primary w-8 h-8"></i>
@@ -60,12 +60,23 @@
             <h2 class="text-lg text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
             <p class="text-slate-500 text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
-        <div class="flex items-center gap-3">
-            <select id="termFilter" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none shadow-sm cursor-pointer min-w-[200px]">
-                <option value="all">ปีการศึกษาทั้งหมด</option>
-                <!-- Options จะถูกสร้างอัตโนมัติจากข้อมูลใน CSV -->
-            </select>
-            <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center gap-2 text-base">
+        
+        <!-- ตัวกรองแบบใหม่: เลือกหลายเทอม (Multi-select) -->
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto" id="multiSelectContainer">
+            <div class="relative w-full sm:w-auto">
+                <button id="multiSelectBtn" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-1 focus:ring-primary focus:border-primary px-4 py-2.5 shadow-sm cursor-pointer min-w-[220px] w-full flex justify-between items-center transition-all hover:bg-slate-50">
+                    <span id="multiSelectLabel" class="truncate font-medium">กำลังโหลด...</span>
+                    <i data-lucide="chevron-down" class="w-5 h-5 ml-2 text-slate-400 shrink-0"></i>
+                </button>
+                
+                <!-- Dropdown หน้าต่าง Checkbox -->
+                <div id="multiSelectDropdown" class="hidden absolute right-0 sm:right-auto sm:left-0 mt-2 w-full sm:w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div class="max-h-64 overflow-y-auto p-2" id="termCheckboxes">
+                        <!-- ตัวเลือกจะถูกสร้างอัตโนมัติที่นี่ -->
+                    </div>
+                </div>
+            </div>
+            <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-base w-full sm:w-auto">
                 <i data-lucide="download" class="w-5 h-5"></i>
                 <span class="hidden sm:inline">ส่งออกรายงาน</span>
             </button>
@@ -195,6 +206,24 @@
         Chart.register(ChartDataLabels);
 
         let globalData = []; // เก็บข้อมูลที่ดึงมาจาก Google Sheets ทั้งหมด
+        let activeTerms = []; // ตัวแปรเก็บรายการเทอมที่ถูกติ๊กเลือก
+        let allAvailableTerms = []; // เทอมที่มีทั้งหมดในระบบ
+
+        // ควบคุมการเปิดปิด Dropdown Multi-select
+        const multiSelectBtn = document.getElementById('multiSelectBtn');
+        const multiSelectDropdown = document.getElementById('multiSelectDropdown');
+        const multiSelectContainer = document.getElementById('multiSelectContainer');
+
+        multiSelectBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            multiSelectDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!multiSelectContainer.contains(e.target)) {
+                multiSelectDropdown.classList.add('hidden');
+            }
+        });
 
         // 1. ฟังก์ชันดึงข้อมูลจาก Google Sheets (CSV)
         async function loadData() {
@@ -214,7 +243,6 @@
                             const id = row['รหัสวิชา'] || row['รหัส'] || '-';
                             const name = row['ชื่อรายวิชา'] || row['รายวิชา'] || '-';
                             
-                            // จัดการปีและภาคการศึกษา
                             const termRaw = row['ภาคการศึกษา'] || '';
                             const yearRaw = row['ปีการศึกษา'] || '';
                             const termYear = (termRaw && yearRaw) ? `${termRaw}/${yearRaw}` : '-';
@@ -238,7 +266,7 @@
                         
                         document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
                         
-                        // สร้างตัวเลือก Dropdown อัตโนมัติจากข้อมูลที่มี
+                        // สร้างตัวเลือก Dropdown Checkboxes
                         populateTermFilter(globalData);
                         
                         // กรองและแสดงผลข้อมูล
@@ -251,45 +279,97 @@
             }
         }
 
-        // ฟังก์ชันสร้างตัวเลือกเทอมอัตโนมัติ
+        // ฟังก์ชันสร้างตัวเลือก Checkbox สำหรับเลือกหลายเทอม
         function populateTermFilter(data) {
-            const termFilter = document.getElementById('termFilter');
-            const currentSelection = termFilter.value; // เก็บค่าเดิมที่เลือกไว้
+            const container = document.getElementById('termCheckboxes');
             
-            // หาเทอมที่ไม่ซ้ำกันทั้งหมด (เช่น "1/2569", "2/2568")
-            const terms = [...new Set(data.map(item => item.termYear))].filter(t => t !== '-');
+            // หาเทอมที่ไม่ซ้ำกันทั้งหมด
+            allAvailableTerms = [...new Set(data.map(item => item.termYear))].filter(t => t !== '-');
             
-            // เรียงลำดับเทอมล่าสุดขึ้นก่อน (มากไปน้อย)
-            terms.sort((a, b) => {
+            // เรียงลำดับเทอมล่าสุดขึ้นก่อน
+            allAvailableTerms.sort((a, b) => {
                 const [termA, yearA] = a.split('/');
                 const [termB, yearB] = b.split('/');
                 if (yearA !== yearB) return yearB - yearA;
                 return termB - termA;
             });
 
-            // ล้างตัวเลือกเก่าและเพิ่ม "ปีการศึกษาทั้งหมด" เสมอ
-            termFilter.innerHTML = '<option value="all">ปีการศึกษาทั้งหมด</option>';
+            // ถ้าเป็นการโหลดครั้งแรก ให้ตั้งค่าเลือก "เทอมล่าสุด" ให้โดยอัตโนมัติ
+            if (!container.dataset.initialized && allAvailableTerms.length > 0) {
+                activeTerms = [allAvailableTerms[0]]; 
+                container.dataset.initialized = "true";
+            }
+
+            const isAllSelected = (activeTerms.length === allAvailableTerms.length && allAvailableTerms.length > 0);
+
+            // วาดปุ่ม "เลือกทั้งหมด"
+            container.innerHTML = `
+                <label class="flex items-center px-3 py-2.5 hover:bg-slate-50 rounded-lg cursor-pointer mb-1 transition-colors group">
+                    <input type="checkbox" id="selectAllTerms" class="accent-blue-600 rounded border-slate-300 w-4 h-4 mr-3" ${isAllSelected ? 'checked' : ''}>
+                    <span class="text-sm font-medium text-slate-800 group-hover:text-primary transition-colors">เลือกทั้งหมด</span>
+                </label>
+                <div class="h-px bg-slate-100 my-1 mx-2"></div>
+            `;
             
-            terms.forEach(term => {
-                const option = document.createElement('option');
-                option.value = term;
-                option.textContent = `ภาคการศึกษา ${term}`;
-                // ถ้าระบบจำได้ว่าผู้ใช้เคยเลือกเทอมนี้ ให้ select ไว้เหมือนเดิม (เพื่อไม่ให้หลุดตอน Auto-refresh)
-                if (term === currentSelection) option.selected = true;
-                termFilter.appendChild(option);
+            // วาด Checkbox แต่ละเทอม
+            allAvailableTerms.forEach(term => {
+                const isChecked = activeTerms.includes(term);
+                container.insertAdjacentHTML('beforeend', `
+                    <label class="flex items-center px-3 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors term-label group">
+                        <input type="checkbox" value="${term}" class="term-checkbox accent-blue-600 rounded border-slate-300 w-4 h-4 mr-3" ${isChecked ? 'checked' : ''}>
+                        <span class="text-sm text-slate-600 group-hover:text-slate-900 transition-colors">ภาคการศึกษา ${term}</span>
+                    </label>
+                `);
             });
-            
-            // ถ้าโหลดมาครั้งแรก (ยังเป็น all) และมีเทอมล่าสุด ให้เลือกเทอมล่าสุดเป็นค่าตั้งต้น
-            if (currentSelection === "all" && terms.length > 0 && !termFilter.dataset.initialized) {
-                termFilter.value = terms[0];
-                termFilter.dataset.initialized = "true";
+
+            updateDropdownLabel();
+
+            // Event Listener: เมื่อติ๊กปุ่ม "เลือกทั้งหมด"
+            document.getElementById('selectAllTerms').addEventListener('change', function(e) {
+                const checked = e.target.checked;
+                const checkboxes = document.querySelectorAll('.term-checkbox');
+                activeTerms = [];
+                checkboxes.forEach(cb => {
+                    cb.checked = checked;
+                    if(checked) activeTerms.push(cb.value);
+                });
+                updateDropdownLabel();
+                applyFilters();
+            });
+
+            // Event Listener: เมื่อติ๊กเลือกเทอมย่อยๆ
+            document.querySelectorAll('.term-checkbox').forEach(cb => {
+                cb.addEventListener('change', function() {
+                    activeTerms = Array.from(document.querySelectorAll('.term-checkbox:checked')).map(c => c.value);
+                    // อัปเดตปุ่มเลือกทั้งหมดอัตโนมัติ
+                    document.getElementById('selectAllTerms').checked = (activeTerms.length === allAvailableTerms.length && allAvailableTerms.length > 0);
+                    updateDropdownLabel();
+                    applyFilters();
+                });
+            });
+        }
+
+        // ฟังก์ชันอัปเดตข้อความบนปุ่ม
+        function updateDropdownLabel() {
+            const label = document.getElementById('multiSelectLabel');
+            if (activeTerms.length === 0) {
+                label.innerText = "ไม่ได้เลือกเทอม";
+                label.className = "truncate text-slate-400";
+            } else if (activeTerms.length === allAvailableTerms.length) {
+                label.innerText = "ปีการศึกษาทั้งหมด";
+                label.className = "truncate font-medium text-primary";
+            } else if (activeTerms.length === 1) {
+                label.innerText = `ภาคการศึกษา ${activeTerms[0]}`;
+                label.className = "truncate font-medium text-slate-800";
+            } else {
+                label.innerText = `เลือกแล้ว ${activeTerms.length} เทอม`;
+                label.className = "truncate font-medium text-primary";
             }
         }
 
-        // ฟังก์ชันตัวกรองข้อมูล (ทำงานเมื่อพิมพ์ค้นหา หรือ เปลี่ยน Dropdown)
+        // ฟังก์ชันตัวกรองข้อมูล (ทำงานเมื่อพิมพ์ค้นหา หรือ ติ๊กเลือกเทอม)
         function applyFilters() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const selectedTerm = document.getElementById('termFilter').value;
 
             const filteredData = globalData.filter(item => {
                 // เช็กเงื่อนไขช่องค้นหา
@@ -297,8 +377,8 @@
                                     item.id.toLowerCase().includes(searchTerm) ||
                                     item.instructor.toLowerCase().includes(searchTerm);
                 
-                // เช็กเงื่อนไข Dropdown ปีการศึกษา
-                const matchTerm = selectedTerm === 'all' || item.termYear === selectedTerm;
+                // เช็กว่าเทอมของวิชานี้ อยู่ในลิสต์ที่ติ๊กเลือกไว้หรือไม่
+                const matchTerm = activeTerms.includes(item.termYear);
                 
                 return matchSearch && matchTerm;
             });
@@ -306,9 +386,8 @@
             updateDashboard(filteredData);
         }
 
-        // Event Listeners สำหรับเชื่อมต่อตัวกรองกับฟังก์ชัน
+        // Event Listener สำหรับช่องค้นหา
         document.getElementById('searchInput').addEventListener('input', applyFilters);
-        document.getElementById('termFilter').addEventListener('change', applyFilters);
 
         // 2. Logic for rendering
         function updateDashboard(data) {
@@ -332,7 +411,7 @@
             tableBody.innerHTML = '';
             
             if(data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500">ไม่พบข้อมูลที่ค้นหา</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500">ไม่พบข้อมูล กรุณาเลือกเทอมการศึกษา</td></tr>`;
             }
 
             data.forEach(item => {
