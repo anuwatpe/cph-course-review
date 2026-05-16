@@ -5,22 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Academic Dashboard - ระบบติดตามการวิพากษ์รายวิชา</title>
     
-    <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Chart.js (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Chart.js DataLabels Plugin -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
     
-    <!-- PapaParse (CDN) สำหรับอ่านไฟล์ CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
-    <!-- Google Fonts: Prompt -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     
-    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <script>
@@ -48,7 +42,6 @@
 </head>
 <body class="text-slate-800 antialiased font-sans p-4 md:p-8">
 
-    <!-- Header -->
     <header class="mb-8 flex flex-col md:flex-row md:items-start md:items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl font-semibold text-slate-900 flex items-center gap-2">
@@ -59,7 +52,6 @@
             <p class="text-slate-500 text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
         
-        <!-- ตัวกรอง -->
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto" id="multiSelectContainer">
             <div class="relative w-full sm:w-auto">
                 <button id="multiSelectBtn" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-1 focus:ring-primary focus:border-primary px-4 py-2.5 shadow-sm cursor-pointer min-w-[220px] w-full flex justify-between items-center transition-all hover:bg-slate-50">
@@ -69,8 +61,7 @@
                 
                 <div id="multiSelectDropdown" class="hidden absolute right-0 sm:right-auto sm:left-0 mt-2 w-full sm:w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div class="max-h-64 overflow-y-auto p-2" id="termCheckboxes">
-                        <!-- ตัวเลือกจะถูกสร้างอัตโนมัติ -->
-                    </div>
+                        </div>
                 </div>
             </div>
             <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-base w-full sm:w-auto">
@@ -80,7 +71,6 @@
         </div>
     </header>
 
-    <!-- KPI Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
@@ -123,23 +113,19 @@
         </div>
     </div>
 
-    <!-- Charts Section -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <!-- 1. กราฟโดนัทชาร์ต สำหรับการลงเวลา -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการลงเวลา</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="bookingChart"></canvas>
             </div>
         </div>
-        <!-- 2. กราฟโดนัทชาร์ต สถานะการนำเสนอ -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="presentChart"></canvas>
             </div>
         </div>
-        <!-- 3. กราฟโดนัทชาร์ต สถานะอัปโหลดแผนฯ -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
@@ -148,17 +134,15 @@
         </div>
     </div>
     
-    <!-- Bar Chart -->
     <div class="grid grid-cols-1 gap-6 mb-8">
         <div class="card p-6">
-            <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
+            <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี (สถานะดำเนินการสำเร็จ)</h2>
             <div class="relative h-64 w-full">
                 <canvas id="yearChart"></canvas>
             </div>
         </div>
     </div>
 
-    <!-- Table Section -->
     <div class="card overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h2 class="text-xl font-medium text-slate-800">ตารางสรุปการดำเนินการรายวิชา</h2>
@@ -182,8 +166,7 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
-                    <!-- Data will be injected here via JavaScript -->
-                </tbody>
+                    </tbody>
             </table>
         </div>
         <div class="p-4 border-t border-slate-100 bg-slate-50 text-sm text-slate-500 text-center">
@@ -191,7 +174,6 @@
         </div>
     </div>
 
-    <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
         <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา</p>
         <p class="mt-0.5">สาขาวิชาสาธารณสุขชุมชน</p>
@@ -534,10 +516,11 @@
                 }
             });
 
-            // --- 4. Bar Chart: By Year ---
+            // --- 4. Bar Chart: By Year (Grouped showing complete status of all 3 steps) ---
             const years = [1, 2, 3, 4];
-            const completedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
-            const pendingByYear = years.map(y => data.filter(d => d.year === y && !d.upload).length);
+            const bookedByYear = years.map(y => data.filter(d => d.year === y && d.booking).length);
+            const presentedByYear = years.map(y => data.filter(d => d.year === y && d.presented).length);
+            const uploadedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
 
             if (yearChartInstance) yearChartInstance.destroy();
             const ctxYear = document.getElementById('yearChart').getContext('2d');
@@ -546,16 +529,17 @@
                 data: {
                     labels: ['ชั้นปีที่ 1', 'ชั้นปีที่ 2', 'ชั้นปีที่ 3', 'ชั้นปีที่ 4'],
                     datasets: [
-                        { label: 'อัปโหลด มคอ. แล้ว', data: completedByYear, backgroundColor: colors.emerald, borderRadius: 4 },
-                        { label: 'รออัปโหลด มคอ.', data: pendingByYear, backgroundColor: colors.slate200, borderRadius: 4 }
+                        { label: 'ลงเวลาแล้ว', data: bookedByYear, backgroundColor: colors.blue, borderRadius: 4 },
+                        { label: 'นำเสนอแล้ว', data: presentedByYear, backgroundColor: colors.purple, borderRadius: 4 },
+                        { label: 'อัปโหลด มคอ. แล้ว', data: uploadedByYear, backgroundColor: colors.emerald, borderRadius: 4 }
                     ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 14 } } },
-                        y: { stacked: true, border: { display: false }, grid: { color: '#f1f5f9' }, beginAtZero: true, ticks: { stepSize: 1, font: { size: 14 } } }
+                        x: { stacked: false, grid: { display: false }, ticks: { font: { size: 14 } } },
+                        y: { stacked: false, border: { display: false }, grid: { color: '#f1f5f9' }, beginAtZero: true, ticks: { stepSize: 1, font: { size: 14 } } }
                     },
                     plugins: {
                         legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, font: { size: 14 } } },
