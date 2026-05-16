@@ -11,6 +11,9 @@
     <!-- Chart.js (CDN) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
+    <!-- Chart.js DataLabels Plugin (สำหรับแสดง % บนกราฟโดนัท) -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    
     <!-- PapaParse (CDN) สำหรับอ่านไฟล์ CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
@@ -50,21 +53,21 @@
     <!-- Header -->
     <header class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-semibold text-slate-900 flex items-center gap-2">
-                <i data-lucide="layout-dashboard" class="text-primary w-7 h-7"></i>
+            <h1 class="text-3xl font-semibold text-slate-900 flex items-center gap-2">
+                <i data-lucide="layout-dashboard" class="text-primary w-8 h-8"></i>
                 ระบบติดตามการวิพากษ์รายวิชา
             </h1>
-            <h2 class="text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
-            <p class="text-slate-500 text-sm mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
+            <h2 class="text-lg text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
+            <p class="text-slate-500 text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
         <div class="flex items-center gap-3">
-            <select id="termFilter" class="bg-white border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none shadow-sm cursor-pointer">
+            <select id="termFilter" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none shadow-sm cursor-pointer">
                 <option value="all">ปีการศึกษาทั้งหมด</option>
                 <option value="1/2569" selected>ภาคการศึกษา 1/2569</option>
                 <option value="2/2568">ภาคการศึกษา 2/2568</option>
             </select>
-            <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center gap-2 text-sm">
-                <i data-lucide="download" class="w-4 h-4"></i>
+            <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center gap-2 text-base">
+                <i data-lucide="download" class="w-5 h-5"></i>
                 <span class="hidden sm:inline">ส่งออกรายงาน</span>
             </button>
         </div>
@@ -74,42 +77,45 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Card 1 -->
         <div class="card p-6 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-primary">
-                <i data-lucide="book-open" class="w-6 h-6"></i>
+            <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
+                <i data-lucide="book-open" class="w-7 h-7"></i>
             </div>
             <div>
-                <p class="text-sm text-slate-500 font-medium">จำนวนรายวิชาทั้งหมด</p>
-                <p class="text-3xl font-semibold text-slate-800 mt-1" id="kpi-total">0</p>
+                <p class="text-base text-slate-500 font-medium">จำนวนรายวิชาทั้งหมด</p>
+                <p class="text-4xl font-semibold text-slate-800 mt-1" id="kpi-total">0</p>
             </div>
         </div>
-        <!-- Card 4 (New): จำนวนอาจารย์ -->
+        <!-- Card 4: จำนวนอาจารย์ -->
         <div class="card p-6 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
-                <i data-lucide="users" class="w-6 h-6"></i>
+            <div class="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+                <i data-lucide="users" class="w-7 h-7"></i>
             </div>
             <div>
-                <p class="text-sm text-slate-500 font-medium">อาจารย์ผู้รับผิดชอบ</p>
-                <p class="text-3xl font-semibold text-slate-800 mt-1" id="kpi-instructors">0</p>
+                <p class="text-base text-slate-500 font-medium">อาจารย์ผู้รับผิดชอบ</p>
+                <p class="text-4xl font-semibold text-slate-800 mt-1" id="kpi-instructors">0</p>
             </div>
         </div>
-        <!-- Card 2 -->
+        <!-- Card 2: อัปโหลดแล้ว (พร้อมร้อยละ) -->
         <div class="card p-6 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <i data-lucide="check-circle" class="w-6 h-6"></i>
+            <div class="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                <i data-lucide="check-circle" class="w-7 h-7"></i>
             </div>
             <div>
-                <p class="text-sm text-slate-500 font-medium">อัปโหลด มคอ. แล้ว</p>
-                <p class="text-3xl font-semibold text-emerald-600 mt-1" id="kpi-uploaded">0</p>
+                <p class="text-base text-slate-500 font-medium">อัปโหลด มคอ. แล้ว</p>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <p class="text-4xl font-semibold text-emerald-600" id="kpi-uploaded">0</p>
+                    <p class="text-xl font-medium text-emerald-500" id="kpi-uploaded-percent">(0%)</p>
+                </div>
             </div>
         </div>
         <!-- Card 3 -->
         <div class="card p-6 flex items-center gap-4">
-            <div class="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
-                <i data-lucide="clock" class="w-6 h-6"></i>
+            <div class="w-14 h-14 rounded-full bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                <i data-lucide="clock" class="w-7 h-7"></i>
             </div>
             <div>
-                <p class="text-sm text-slate-500 font-medium">รอดำเนินการ</p>
-                <p class="text-3xl font-semibold text-rose-600 mt-1" id="kpi-pending">0</p>
+                <p class="text-base text-slate-500 font-medium">รอดำเนินการ</p>
+                <p class="text-4xl font-semibold text-rose-600 mt-1" id="kpi-pending">0</p>
             </div>
         </div>
     </div>
@@ -118,22 +124,22 @@
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
         <!-- Doughnut Chart 1: สถานะส่งแผน -->
         <div class="card p-6 lg:col-span-1">
-            <h2 class="text-lg font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
-            <div class="relative h-56 w-full flex items-center justify-center">
+            <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
+            <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="statusChart"></canvas>
             </div>
         </div>
         <!-- Doughnut Chart 2: สถานะการนำเสนอ -->
         <div class="card p-6 lg:col-span-1">
-            <h2 class="text-lg font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
-            <div class="relative h-56 w-full flex items-center justify-center">
+            <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
+            <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="presentChart"></canvas>
             </div>
         </div>
         <!-- Bar Chart -->
         <div class="card p-6 lg:col-span-2">
-            <h2 class="text-lg font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
-            <div class="relative h-56 w-full">
+            <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
+            <div class="relative h-64 w-full">
                 <canvas id="yearChart"></canvas>
             </div>
         </div>
@@ -142,14 +148,14 @@
     <!-- Table Section -->
     <div class="card overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 class="text-lg font-medium text-slate-800">ตารางสรุปการดำเนินการรายวิชา</h2>
+            <h2 class="text-xl font-medium text-slate-800">ตารางสรุปการดำเนินการรายวิชา</h2>
             <div class="relative">
-                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
-                <input type="text" id="searchInput" placeholder="ค้นหารายวิชา, อาจารย์..." class="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary w-full sm:w-64">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
+                <input type="text" id="searchInput" placeholder="ค้นหารายวิชา, อาจารย์..." class="pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-base focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary w-full sm:w-72">
             </div>
         </div>
         <div class="overflow-x-auto no-scrollbar">
-            <table class="w-full text-left text-sm text-slate-600">
+            <table class="w-full text-left text-base text-slate-600">
                 <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100 whitespace-nowrap">
                     <tr>
                         <th class="px-6 py-4">รหัสวิชา</th>
@@ -166,13 +172,13 @@
                 </tbody>
             </table>
         </div>
-        <div class="p-4 border-t border-slate-100 bg-slate-50 text-xs text-slate-500 text-center">
+        <div class="p-4 border-t border-slate-100 bg-slate-50 text-sm text-slate-500 text-center">
             อัปเดตข้อมูลล่าสุด: <span id="lastUpdate"></span>
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="mt-8 mb-4 text-center text-xs text-slate-500">
+    <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
         <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา</p>
         <p class="mt-0.5">สาขาวิชาสาธารณสุขชุมชน</p>
         <p class="mt-1.5">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span></p>
@@ -185,11 +191,13 @@
         // Initialize Icons
         lucide.createIcons();
 
+        // Register Chart.js Plugin for Data Labels
+        Chart.register(ChartDataLabels);
+
         let globalData = []; // เก็บข้อมูลที่ดึงมาจาก Google Sheets
 
         // 1. ฟังก์ชันดึงข้อมูลจาก Google Sheets (CSV) แบบเรียลไทม์
         async function loadData() {
-            // ลิงก์ CSV จาก Google Sheets ของคุณ
             const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnyAkoSHkzZLSppamsaqI8WyuwzGNwVT8a6zdXe9bCP8Ju5Z265rEsXq5MAqgHdHUcaw3m9JS4nSGX/pub?gid=486231050&single=true&output=csv";
             
             try {
@@ -202,27 +210,21 @@
                     header: true,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        // แปลงข้อมูลจาก CSV ให้อยู่ในรูปแบบที่ Dashboard เข้าใจ
                         globalData = results.data.map(row => {
                             const id = row['รหัสวิชา'] || row['รหัส'] || '-';
                             const name = row['ชื่อรายวิชา'] || row['รายวิชา'] || '-';
                             
-                            // ดึงตัวเลขชั้นปี
                             const yearStr = row['ชั้นปี'] || '1';
                             const year = parseInt(yearStr.replace(/\D/g, '')) || 1;
                             
-                            // ดึงชื่ออาจารย์ (รองรับชื่อคอลัมน์หลายรูปแบบ)
                             const instructor = row['ผู้รับผิดชอบรายวิชา 2569'] || row['ผู้รับผิดชอบรายวิชา'] || row['ผู้รับผิดชอบ'] || '-';
                             
-                            // เช็กสถานะอัปโหลดไฟล์
                             const uploadStr = (row['อัพไฟล์'] || '').toString().trim().toUpperCase();
                             const upload = uploadStr === 'TRUE';
                             
-                            // เช็กสถานะลงเวลา
                             const bookingStr = (row['ลงเวลา'] || '').toString().trim().toUpperCase();
                             const booking = bookingStr === 'TRUE' || bookingStr.includes('แล้ว');
                             
-                            // เช็กสถานะการนำเสนอ
                             const presentStr = (row['การนำเสนอ'] || row['นำเสนอ'] || '').toString().trim().toUpperCase();
                             const presented = presentStr === 'TRUE' || presentStr.includes('แล้ว');
 
@@ -230,7 +232,7 @@
                         }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                         
                         document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
-                        updateDashboard(globalData); // สั่งวาด Dashboard ใหม่
+                        updateDashboard(globalData); 
                     }
                 });
             } catch (error) {
@@ -246,13 +248,17 @@
             const uploaded = data.filter(d => d.upload).length;
             const pending = total - uploaded;
             
-            // คำนวณจำนวนอาจารย์แบบไม่ซ้ำ (Unique Instructors)
+            // คำนวณร้อยละของการอัปโหลด
+            const uploadPercent = total > 0 ? Math.round((uploaded / total) * 100) : 0;
+            
+            // คำนวณจำนวนอาจารย์แบบไม่ซ้ำ
             const uniqueInstructors = new Set(data.map(d => d.instructor).filter(i => i && i !== '-')).size;
 
             // Animate numbers
             document.getElementById('kpi-total').innerText = total;
             document.getElementById('kpi-instructors').innerText = uniqueInstructors;
             document.getElementById('kpi-uploaded').innerText = uploaded;
+            document.getElementById('kpi-uploaded-percent').innerText = `(${uploadPercent}%)`;
             document.getElementById('kpi-pending').innerText = pending;
 
             // Render Table
@@ -261,16 +267,16 @@
             
             data.forEach(item => {
                 const uploadBadge = item.upload 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>สำเร็จ</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>รอดำเนินการ</span>`;
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>สำเร็จ</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200"><span class="w-2 h-2 rounded-full bg-rose-500"></span>รอดำเนินการ</span>`;
                 
                 const bookingBadge = item.booking 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>ลงเวลาแล้ว</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>ยังไม่ลงเวลา</span>`;
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200"><span class="w-2 h-2 rounded-full bg-blue-500"></span>ลงเวลาแล้ว</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200"><span class="w-2 h-2 rounded-full bg-slate-400"></span>ยังไม่ลงเวลา</span>`;
 
                 const presentBadge = item.presented 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200"><span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>นำเสนอแล้ว</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>ยังไม่นำเสนอ</span>`;
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200"><span class="w-2 h-2 rounded-full bg-purple-500"></span>นำเสนอแล้ว</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500"></span>ยังไม่นำเสนอ</span>`;
 
                 const row = `
                     <tr class="hover:bg-slate-50/50 transition">
@@ -295,7 +301,6 @@
         let presentChartInstance = null;
         let yearChartInstance = null;
 
-        // Colors for minimalist design
         const colors = {
             emerald: '#10b981',
             rose: '#f43f5e',
@@ -306,9 +311,17 @@
             slate800: '#1e293b'
         };
 
-        // Common Chart Defaults
         Chart.defaults.font.family = "'Prompt', sans-serif";
+        Chart.defaults.font.size = 14;
         Chart.defaults.color = '#64748b';
+
+        // ฟังก์ชันคำนวณและคืนค่าเปอร์เซ็นต์สำหรับ DataLabels
+        const percentageFormatter = (value, ctx) => {
+            let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+            if (value === 0 || sum === 0) return '';
+            let percentage = Math.round((value * 100) / sum) + "%";
+            return percentage;
+        };
 
         function updateCharts(data) {
             // --- 1. Doughnut Chart: Upload Status ---
@@ -331,10 +344,15 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '75%',
+                    cutout: '70%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15 } },
-                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8 }
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
+                        datalabels: {
+                            color: '#ffffff',
+                            font: { weight: 'bold', size: 16 },
+                            formatter: percentageFormatter
+                        }
                     }
                 }
             });
@@ -359,10 +377,15 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '75%',
+                    cutout: '70%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15 } },
-                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8 }
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
+                        datalabels: {
+                            color: '#ffffff',
+                            font: { weight: 'bold', size: 16 },
+                            formatter: percentageFormatter
+                        }
                     }
                 }
             });
@@ -397,12 +420,15 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: { stacked: true, grid: { display: false } },
-                        y: { stacked: true, border: { display: false }, grid: { color: '#f1f5f9' }, beginAtZero: true, ticks: { stepSize: 1 } }
+                        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 14 } } },
+                        y: { stacked: true, border: { display: false }, grid: { color: '#f1f5f9' }, beginAtZero: true, ticks: { stepSize: 1, font: { size: 14 } } }
                     },
                     plugins: {
-                        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8 } },
-                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8 }
+                        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, font: { size: 14 } } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
+                        datalabels: {
+                            display: false // ปิดการแสดงตัวเลข % ในกราฟแท่งเพื่อไม่ให้รกเกินไป
+                        }
                     }
                 }
             });
@@ -419,10 +445,8 @@
             updateDashboard(filteredData);
         });
 
-        // Initialize App (เริ่มโหลดข้อมูลทันทีที่เปิดหน้าเว็บ)
+        // Initialize App
         loadData();
-
-        // Auto-refresh: ให้ระบบดึงข้อมูลใหม่ทุกๆ 5 นาที (300,000 มิลลิวินาที) แบบไม่ต้องกด F5
         setInterval(loadData, 300000);
 
     </script>
