@@ -61,10 +61,9 @@
             <p class="text-slate-500 text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
         <div class="flex items-center gap-3">
-            <select id="termFilter" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none shadow-sm cursor-pointer">
+            <select id="termFilter" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-primary focus:border-primary block p-2.5 outline-none shadow-sm cursor-pointer min-w-[200px]">
                 <option value="all">ปีการศึกษาทั้งหมด</option>
-                <option value="1/2569" selected>ภาคการศึกษา 1/2569</option>
-                <option value="2/2568">ภาคการศึกษา 2/2568</option>
+                <!-- Options จะถูกสร้างอัตโนมัติจากข้อมูลใน CSV -->
             </select>
             <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center gap-2 text-base">
                 <i data-lucide="download" class="w-5 h-5"></i>
@@ -81,7 +80,7 @@
                 <i data-lucide="book-open" class="w-7 h-7"></i>
             </div>
             <div>
-                <p class="text-base text-slate-500 font-medium">จำนวนรายวิชาทั้งหมด</p>
+                <p class="text-base text-slate-500 font-medium">จำนวนรายวิชา</p>
                 <p class="text-4xl font-semibold text-slate-800 mt-1" id="kpi-total">0</p>
             </div>
         </div>
@@ -158,6 +157,7 @@
             <table class="w-full text-left text-base text-slate-600">
                 <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100 whitespace-nowrap">
                     <tr>
+                        <th class="px-6 py-4">เทอม/ปี</th>
                         <th class="px-6 py-4">รหัสวิชา</th>
                         <th class="px-6 py-4">ชื่อรายวิชา</th>
                         <th class="px-6 py-4">ชั้นปี</th>
@@ -180,6 +180,7 @@
     <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
         <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา</p>
+        <p class="mt-0.5">สาขาวิชาสาธารณสุขชุมชน</p>
         <p class="mt-1.5">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span></p>
     </footer>
 
@@ -193,9 +194,9 @@
         // Register Chart.js Plugin for Data Labels
         Chart.register(ChartDataLabels);
 
-        let globalData = []; // เก็บข้อมูลที่ดึงมาจาก Google Sheets
+        let globalData = []; // เก็บข้อมูลที่ดึงมาจาก Google Sheets ทั้งหมด
 
-        // 1. ฟังก์ชันดึงข้อมูลจาก Google Sheets (CSV) แบบเรียลไทม์
+        // 1. ฟังก์ชันดึงข้อมูลจาก Google Sheets (CSV)
         async function loadData() {
             const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnyAkoSHkzZLSppamsaqI8WyuwzGNwVT8a6zdXe9bCP8Ju5Z265rEsXq5MAqgHdHUcaw3m9JS4nSGX/pub?gid=486231050&single=true&output=csv";
             
@@ -213,6 +214,11 @@
                             const id = row['รหัสวิชา'] || row['รหัส'] || '-';
                             const name = row['ชื่อรายวิชา'] || row['รายวิชา'] || '-';
                             
+                            // จัดการปีและภาคการศึกษา
+                            const termRaw = row['ภาคการศึกษา'] || '';
+                            const yearRaw = row['ปีการศึกษา'] || '';
+                            const termYear = (termRaw && yearRaw) ? `${termRaw}/${yearRaw}` : '-';
+                            
                             const yearStr = row['ชั้นปี'] || '1';
                             const year = parseInt(yearStr.replace(/\D/g, '')) || 1;
                             
@@ -227,11 +233,16 @@
                             const presentStr = (row['การนำเสนอ'] || row['นำเสนอ'] || '').toString().trim().toUpperCase();
                             const presented = presentStr === 'TRUE' || presentStr.includes('แล้ว');
 
-                            return { id, name, year, instructor, upload, booking, presented };
+                            return { id, name, year, instructor, upload, booking, presented, termYear };
                         }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                         
                         document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
-                        updateDashboard(globalData); 
+                        
+                        // สร้างตัวเลือก Dropdown อัตโนมัติจากข้อมูลที่มี
+                        populateTermFilter(globalData);
+                        
+                        // กรองและแสดงผลข้อมูล
+                        applyFilters(); 
                     }
                 });
             } catch (error) {
@@ -240,6 +251,65 @@
             }
         }
 
+        // ฟังก์ชันสร้างตัวเลือกเทอมอัตโนมัติ
+        function populateTermFilter(data) {
+            const termFilter = document.getElementById('termFilter');
+            const currentSelection = termFilter.value; // เก็บค่าเดิมที่เลือกไว้
+            
+            // หาเทอมที่ไม่ซ้ำกันทั้งหมด (เช่น "1/2569", "2/2568")
+            const terms = [...new Set(data.map(item => item.termYear))].filter(t => t !== '-');
+            
+            // เรียงลำดับเทอมล่าสุดขึ้นก่อน (มากไปน้อย)
+            terms.sort((a, b) => {
+                const [termA, yearA] = a.split('/');
+                const [termB, yearB] = b.split('/');
+                if (yearA !== yearB) return yearB - yearA;
+                return termB - termA;
+            });
+
+            // ล้างตัวเลือกเก่าและเพิ่ม "ปีการศึกษาทั้งหมด" เสมอ
+            termFilter.innerHTML = '<option value="all">ปีการศึกษาทั้งหมด</option>';
+            
+            terms.forEach(term => {
+                const option = document.createElement('option');
+                option.value = term;
+                option.textContent = `ภาคการศึกษา ${term}`;
+                // ถ้าระบบจำได้ว่าผู้ใช้เคยเลือกเทอมนี้ ให้ select ไว้เหมือนเดิม (เพื่อไม่ให้หลุดตอน Auto-refresh)
+                if (term === currentSelection) option.selected = true;
+                termFilter.appendChild(option);
+            });
+            
+            // ถ้าโหลดมาครั้งแรก (ยังเป็น all) และมีเทอมล่าสุด ให้เลือกเทอมล่าสุดเป็นค่าตั้งต้น
+            if (currentSelection === "all" && terms.length > 0 && !termFilter.dataset.initialized) {
+                termFilter.value = terms[0];
+                termFilter.dataset.initialized = "true";
+            }
+        }
+
+        // ฟังก์ชันตัวกรองข้อมูล (ทำงานเมื่อพิมพ์ค้นหา หรือ เปลี่ยน Dropdown)
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const selectedTerm = document.getElementById('termFilter').value;
+
+            const filteredData = globalData.filter(item => {
+                // เช็กเงื่อนไขช่องค้นหา
+                const matchSearch = item.name.toLowerCase().includes(searchTerm) || 
+                                    item.id.toLowerCase().includes(searchTerm) ||
+                                    item.instructor.toLowerCase().includes(searchTerm);
+                
+                // เช็กเงื่อนไข Dropdown ปีการศึกษา
+                const matchTerm = selectedTerm === 'all' || item.termYear === selectedTerm;
+                
+                return matchSearch && matchTerm;
+            });
+
+            updateDashboard(filteredData);
+        }
+
+        // Event Listeners สำหรับเชื่อมต่อตัวกรองกับฟังก์ชัน
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('termFilter').addEventListener('change', applyFilters);
+
         // 2. Logic for rendering
         function updateDashboard(data) {
             // Calculate KPIs
@@ -247,10 +317,7 @@
             const uploaded = data.filter(d => d.upload).length;
             const pending = total - uploaded;
             
-            // คำนวณร้อยละของการอัปโหลด
             const uploadPercent = total > 0 ? Math.round((uploaded / total) * 100) : 0;
-            
-            // คำนวณจำนวนอาจารย์แบบไม่ซ้ำ
             const uniqueInstructors = new Set(data.map(d => d.instructor).filter(i => i && i !== '-')).size;
 
             // Animate numbers
@@ -264,6 +331,10 @@
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
             
+            if(data.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500">ไม่พบข้อมูลที่ค้นหา</td></tr>`;
+            }
+
             data.forEach(item => {
                 const uploadBadge = item.upload 
                     ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>สำเร็จ</span>`
@@ -279,6 +350,7 @@
 
                 const row = `
                     <tr class="hover:bg-slate-50/50 transition">
+                        <td class="px-6 py-4 font-medium text-slate-500 whitespace-nowrap">${item.termYear}</td>
                         <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">${item.id}</td>
                         <td class="px-6 py-4">${item.name}</td>
                         <td class="px-6 py-4 whitespace-nowrap">ปี ${item.year}</td>
@@ -314,7 +386,6 @@
         Chart.defaults.font.size = 14;
         Chart.defaults.color = '#64748b';
 
-        // ฟังก์ชันคำนวณและคืนค่าเปอร์เซ็นต์สำหรับ DataLabels
         const percentageFormatter = (value, ctx) => {
             let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
             if (value === 0 || sum === 0) return '';
@@ -426,27 +497,16 @@
                         legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
                         datalabels: {
-                            display: false // ปิดการแสดงตัวเลข % ในกราฟแท่งเพื่อไม่ให้รกเกินไป
+                            display: false 
                         }
                     }
                 }
             });
         }
 
-        // 4. Search Functionality
-        document.getElementById('searchInput').addEventListener('input', function(e) {
-            const searchTerm = e.target.value.toLowerCase();
-            const filteredData = globalData.filter(item => 
-                item.name.toLowerCase().includes(searchTerm) || 
-                item.id.toLowerCase().includes(searchTerm) ||
-                item.instructor.toLowerCase().includes(searchTerm)
-            );
-            updateDashboard(filteredData);
-        });
-
         // Initialize App
         loadData();
-        setInterval(loadData, 300000);
+        setInterval(loadData, 300000); // อัปเดตทุกๆ 5 นาที
 
     </script>
 </body>
