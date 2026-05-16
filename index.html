@@ -152,7 +152,16 @@
         </div>
     </div>
 
+    <!-- Footer -->
+    <footer class="mt-8 mb-4 text-center text-xs text-slate-500">
+        <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา. All rights reserved.</p>
+        <p class="mt-1">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span></p>
+    </footer>
+
     <script>
+        // Set Current Year in Footer
+        document.getElementById('currentYear').innerText = new Date().getFullYear();
+
         // Initialize Icons
         lucide.createIcons();
 
