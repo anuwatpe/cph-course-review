@@ -61,7 +61,8 @@
                 
                 <div id="multiSelectDropdown" class="hidden absolute right-0 sm:right-auto sm:left-0 mt-2 w-full sm:w-64 bg-white border border-slate-200 rounded-xl shadow-xl z-50 overflow-hidden">
                     <div class="max-h-64 overflow-y-auto p-2" id="termCheckboxes">
-                        </div>
+                        <!-- Checkboxes will be populated here -->
+                    </div>
                 </div>
             </div>
             <button class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-base w-full sm:w-auto">
@@ -136,7 +137,7 @@
     
     <div class="grid grid-cols-1 gap-6 mb-8">
         <div class="card p-6">
-            <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี (สถานะดำเนินการสำเร็จ)</h2>
+            <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
             <div class="relative h-64 w-full">
                 <canvas id="yearChart"></canvas>
             </div>
@@ -166,7 +167,8 @@
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
-                    </tbody>
+                    <!-- Data will be injected here via JavaScript -->
+                </tbody>
             </table>
         </div>
         <div class="p-4 border-t border-slate-100 bg-slate-50 text-sm text-slate-500 text-center">
@@ -441,7 +443,7 @@
                     labels: ['ลงเวลาแล้ว', 'ยังไม่ลงเวลา'],
                     datasets: [{
                         data: [booked, pendingBooking],
-                        backgroundColor: [colors.blue, colors.slate400],
+                        backgroundColor: [colors.blue, colors.slate200],
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -470,7 +472,7 @@
                     labels: ['นำเสนอแล้ว', 'ยังไม่นำเสนอ'],
                     datasets: [{
                         data: [presented, pendingPresent],
-                        backgroundColor: [colors.purple, colors.amber],
+                        backgroundColor: [colors.purple, colors.slate200],
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
@@ -516,11 +518,20 @@
                 }
             });
 
-            // --- 4. Bar Chart: By Year (Grouped showing complete status of all 3 steps) ---
+            // --- 4. Bar Chart: By Year (Grouped and Stacked showing all 3 steps) ---
             const years = [1, 2, 3, 4];
+            
+            // ข้อมูลการลงเวลา (ทำแล้ว / ยังไม่ทำ)
             const bookedByYear = years.map(y => data.filter(d => d.year === y && d.booking).length);
+            const pendingBookedByYear = years.map(y => data.filter(d => d.year === y && !d.booking).length);
+            
+            // ข้อมูลการนำเสนอ (ทำแล้ว / ยังไม่ทำ)
             const presentedByYear = years.map(y => data.filter(d => d.year === y && d.presented).length);
+            const pendingPresentedByYear = years.map(y => data.filter(d => d.year === y && !d.presented).length);
+            
+            // ข้อมูลการอัปโหลด (ทำแล้ว / ยังไม่ทำ)
             const uploadedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
+            const pendingUploadedByYear = years.map(y => data.filter(d => d.year === y && !d.upload).length);
 
             if (yearChartInstance) yearChartInstance.destroy();
             const ctxYear = document.getElementById('yearChart').getContext('2d');
@@ -529,9 +540,17 @@
                 data: {
                     labels: ['ชั้นปีที่ 1', 'ชั้นปีที่ 2', 'ชั้นปีที่ 3', 'ชั้นปีที่ 4'],
                     datasets: [
-                        { label: 'ลงเวลาแล้ว', data: bookedByYear, backgroundColor: colors.blue, borderRadius: 4 },
-                        { label: 'นำเสนอแล้ว', data: presentedByYear, backgroundColor: colors.purple, borderRadius: 4 },
-                        { label: 'อัปโหลด มคอ. แล้ว', data: uploadedByYear, backgroundColor: colors.emerald, borderRadius: 4 }
+                        // Stack 1: ลงเวลา
+                        { label: 'ลงเวลาแล้ว', data: bookedByYear, backgroundColor: colors.blue, stack: 'booking', borderRadius: 4 },
+                        { label: 'ยังไม่ลงเวลา', data: pendingBookedByYear, backgroundColor: colors.slate200, stack: 'booking', borderRadius: 4 },
+                        
+                        // Stack 2: นำเสนอ
+                        { label: 'นำเสนอแล้ว', data: presentedByYear, backgroundColor: colors.purple, stack: 'present', borderRadius: 4 },
+                        { label: 'ยังไม่นำเสนอ', data: pendingPresentedByYear, backgroundColor: colors.slate200, stack: 'present', borderRadius: 4 },
+                        
+                        // Stack 3: อัปโหลด มคอ.
+                        { label: 'อัปโหลด มคอ. แล้ว', data: uploadedByYear, backgroundColor: colors.emerald, stack: 'upload', borderRadius: 4 },
+                        { label: 'รออัปโหลด มคอ.', data: pendingUploadedByYear, backgroundColor: colors.slate200, stack: 'upload', borderRadius: 4 }
                     ]
                 },
                 options: {
@@ -542,9 +561,21 @@
                         y: { stacked: true, border: { display: false }, grid: { color: '#f1f5f9' }, beginAtZero: true, ticks: { stepSize: 1, font: { size: 14 } } }
                     },
                     plugins: {
-                        legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, font: { size: 14 } } },
+                        legend: { 
+                            position: 'top', 
+                            align: 'end', 
+                            labels: { 
+                                usePointStyle: true, 
+                                boxWidth: 8, 
+                                font: { size: 14 },
+                                // ซ่อนคำว่า "ยังไม่" และ "รอ" ออกจาก Legend เพื่อความสวยงามสะอาดตา (แต่ตอนเอาเมาส์ชี้ Tooltip ยังคงขึ้นปกติ)
+                                filter: function(item, chart) {
+                                    return !item.text.includes('ยังไม่') && !item.text.includes('รอ');
+                                }
+                            } 
+                        },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
-                        datalabels: { display: false }
+                        datalabels: { display: false } // ปิดการโชว์ % ในกราฟแท่งเพื่อไม่ให้รก
                     }
                 }
             });
