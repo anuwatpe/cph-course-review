@@ -125,27 +125,30 @@
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="card p-6">
-            <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
-            <div class="relative h-64 w-full flex items-center justify-center">
-                <canvas id="statusChart"></canvas>
-            </div>
-        </div>
-        <!-- เพิ่มโดนัทชาร์ตที่ 3 สำหรับการลงเวลา -->
+        <!-- 1. กราฟโดนัทชาร์ต สำหรับการลงเวลา -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการลงเวลา</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="bookingChart"></canvas>
             </div>
         </div>
+        <!-- 2. กราฟโดนัทชาร์ต สถานะการนำเสนอ -->
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="presentChart"></canvas>
             </div>
         </div>
+        <!-- 3. กราฟโดนัทชาร์ต สถานะอัปโหลดแผนฯ -->
+        <div class="card p-6">
+            <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
+            <div class="relative h-64 w-full flex items-center justify-center">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
     </div>
     
+    <!-- Bar Chart -->
     <div class="grid grid-cols-1 gap-6 mb-8">
         <div class="card p-6">
             <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
@@ -417,9 +420,9 @@
             updateCharts(data);
         }
 
-        let statusChartInstance = null;
+        let bookingChartInstance = null;
         let presentChartInstance = null;
-        let bookingChartInstance = null; // ตัวแปรสำหรับโดนัทชาร์ตการลงเวลา
+        let statusChartInstance = null;
         let yearChartInstance = null;
 
         const colors = {
@@ -428,7 +431,7 @@
             blue: '#3b82f6',
             purple: '#8b5cf6',
             amber: '#f59e0b',
-            slate400: '#94a3b8', // สีเทาสำหรับสถานะที่ยังไม่ทำ
+            slate400: '#94a3b8',
             slate200: '#e2e8f0',
             slate800: '#1e293b'
         };
@@ -444,36 +447,7 @@
         };
 
         function updateCharts(data) {
-            // --- 1. Doughnut Chart: Upload Status ---
-            const uploaded = data.filter(d => d.upload).length;
-            const pendingUpload = data.length - uploaded;
-
-            if (statusChartInstance) statusChartInstance.destroy();
-            const ctxStatus = document.getElementById('statusChart').getContext('2d');
-            statusChartInstance = new Chart(ctxStatus, {
-                type: 'doughnut',
-                data: {
-                    labels: ['อัปโหลดแล้ว', 'ยังไม่อัปโหลด'],
-                    datasets: [{
-                        data: [uploaded, pendingUpload],
-                        backgroundColor: [colors.emerald, colors.rose],
-                        borderWidth: 0,
-                        hoverOffset: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
-                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
-                        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 16 }, formatter: percentageFormatter }
-                    }
-                }
-            });
-
-            // --- 2. Doughnut Chart: Booking Status ---
+            // --- 1. Doughnut Chart: Booking Status ---
             const booked = data.filter(d => d.booking).length;
             const pendingBooking = data.length - booked;
 
@@ -502,7 +476,7 @@
                 }
             });
 
-            // --- 3. Doughnut Chart: Presentation Status ---
+            // --- 2. Doughnut Chart: Presentation Status ---
             const presented = data.filter(d => d.presented).length;
             const pendingPresent = data.length - presented;
 
@@ -515,6 +489,35 @@
                     datasets: [{
                         data: [presented, pendingPresent],
                         backgroundColor: [colors.purple, colors.amber],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
+                        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 16 }, formatter: percentageFormatter }
+                    }
+                }
+            });
+
+            // --- 3. Doughnut Chart: Upload Status ---
+            const uploaded = data.filter(d => d.upload).length;
+            const pendingUpload = data.length - uploaded;
+
+            if (statusChartInstance) statusChartInstance.destroy();
+            const ctxStatus = document.getElementById('statusChart').getContext('2d');
+            statusChartInstance = new Chart(ctxStatus, {
+                type: 'doughnut',
+                data: {
+                    labels: ['อัปโหลดแล้ว', 'ยังไม่อัปโหลด'],
+                    datasets: [{
+                        data: [uploaded, pendingUpload],
+                        backgroundColor: [colors.emerald, colors.rose],
                         borderWidth: 0,
                         hoverOffset: 4
                     }]
