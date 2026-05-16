@@ -70,7 +70,7 @@
     </header>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- Card 1 -->
         <div class="card p-6 flex items-center gap-4">
             <div class="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-primary">
@@ -79,6 +79,16 @@
             <div>
                 <p class="text-sm text-slate-500 font-medium">จำนวนรายวิชาทั้งหมด</p>
                 <p class="text-3xl font-semibold text-slate-800 mt-1" id="kpi-total">0</p>
+            </div>
+        </div>
+        <!-- Card 4 (New): จำนวนอาจารย์ -->
+        <div class="card p-6 flex items-center gap-4">
+            <div class="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
+                <i data-lucide="users" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <p class="text-sm text-slate-500 font-medium">อาจารย์ผู้รับผิดชอบ</p>
+                <p class="text-3xl font-semibold text-slate-800 mt-1" id="kpi-instructors">0</p>
             </div>
         </div>
         <!-- Card 2 -->
@@ -104,18 +114,25 @@
     </div>
 
     <!-- Charts Section -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <!-- Doughnut Chart -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Doughnut Chart 1: สถานะส่งแผน -->
         <div class="card p-6 lg:col-span-1">
-            <h2 class="text-lg font-medium text-slate-800 mb-4">สถานะการส่งแผนการสอน</h2>
-            <div class="relative h-64 w-full flex items-center justify-center">
+            <h2 class="text-lg font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
+            <div class="relative h-56 w-full flex items-center justify-center">
                 <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+        <!-- Doughnut Chart 2: สถานะการนำเสนอ -->
+        <div class="card p-6 lg:col-span-1">
+            <h2 class="text-lg font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
+            <div class="relative h-56 w-full flex items-center justify-center">
+                <canvas id="presentChart"></canvas>
             </div>
         </div>
         <!-- Bar Chart -->
         <div class="card p-6 lg:col-span-2">
             <h2 class="text-lg font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
-            <div class="relative h-64 w-full">
+            <div class="relative h-56 w-full">
                 <canvas id="yearChart"></canvas>
             </div>
         </div>
@@ -132,7 +149,7 @@
         </div>
         <div class="overflow-x-auto no-scrollbar">
             <table class="w-full text-left text-sm text-slate-600">
-                <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100 whitespace-nowrap">
                     <tr>
                         <th class="px-6 py-4">รหัสวิชา</th>
                         <th class="px-6 py-4">ชื่อรายวิชา</th>
@@ -140,6 +157,7 @@
                         <th class="px-6 py-4">ผู้รับผิดชอบ</th>
                         <th class="px-6 py-4">อัปโหลด มคอ.</th>
                         <th class="px-6 py-4">ลงเวลาวิพากษ์</th>
+                        <th class="px-6 py-4">สถานะการนำเสนอ</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
@@ -199,10 +217,14 @@
                             const upload = uploadStr === 'TRUE';
                             
                             // เช็กสถานะลงเวลา
-                            const bookingStr = (row['ลงเวลา'] || row['การนำเสนอ'] || '').toString().trim().toUpperCase();
+                            const bookingStr = (row['ลงเวลา'] || '').toString().trim().toUpperCase();
                             const booking = bookingStr === 'TRUE' || bookingStr.includes('แล้ว');
+                            
+                            // เช็กสถานะการนำเสนอ
+                            const presentStr = (row['การนำเสนอ'] || row['นำเสนอ'] || '').toString().trim().toUpperCase();
+                            const presented = presentStr === 'TRUE' || presentStr.includes('แล้ว');
 
-                            return { id, name, year, instructor, upload, booking };
+                            return { id, name, year, instructor, upload, booking, presented };
                         }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                         
                         document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
@@ -221,9 +243,13 @@
             const total = data.length;
             const uploaded = data.filter(d => d.upload).length;
             const pending = total - uploaded;
+            
+            // คำนวณจำนวนอาจารย์แบบไม่ซ้ำ (Unique Instructors)
+            const uniqueInstructors = new Set(data.map(d => d.instructor).filter(i => i && i !== '-')).size;
 
             // Animate numbers
             document.getElementById('kpi-total').innerText = total;
+            document.getElementById('kpi-instructors').innerText = uniqueInstructors;
             document.getElementById('kpi-uploaded').innerText = uploaded;
             document.getElementById('kpi-pending').innerText = pending;
 
@@ -240,14 +266,19 @@
                     ? `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>ลงเวลาแล้ว</span>`
                     : `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200"><span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>ยังไม่ลงเวลา</span>`;
 
+                const presentBadge = item.presented 
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200"><span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>นำเสนอแล้ว</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>ยังไม่นำเสนอ</span>`;
+
                 const row = `
                     <tr class="hover:bg-slate-50/50 transition">
-                        <td class="px-6 py-4 font-medium text-slate-900">${item.id}</td>
+                        <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">${item.id}</td>
                         <td class="px-6 py-4">${item.name}</td>
-                        <td class="px-6 py-4">ปี ${item.year}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">ปี ${item.year}</td>
                         <td class="px-6 py-4">${item.instructor}</td>
-                        <td class="px-6 py-4">${uploadBadge}</td>
-                        <td class="px-6 py-4">${bookingBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${uploadBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${bookingBadge}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${presentBadge}</td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML('beforeend', row);
@@ -259,6 +290,7 @@
 
         // 3. Chart.js Configuration
         let statusChartInstance = null;
+        let presentChartInstance = null;
         let yearChartInstance = null;
 
         // Colors for minimalist design
@@ -266,6 +298,8 @@
             emerald: '#10b981',
             rose: '#f43f5e',
             blue: '#3b82f6',
+            purple: '#8b5cf6',
+            amber: '#f59e0b',
             slate200: '#e2e8f0',
             slate800: '#1e293b'
         };
@@ -275,18 +309,18 @@
         Chart.defaults.color = '#64748b';
 
         function updateCharts(data) {
-            // Data for Doughnut Chart
+            // --- 1. Doughnut Chart: Upload Status ---
             const uploaded = data.filter(d => d.upload).length;
-            const pending = data.length - uploaded;
+            const pendingUpload = data.length - uploaded;
 
             if (statusChartInstance) statusChartInstance.destroy();
             const ctxStatus = document.getElementById('statusChart').getContext('2d');
             statusChartInstance = new Chart(ctxStatus, {
                 type: 'doughnut',
                 data: {
-                    labels: ['อัปโหลดแล้ว', 'รอดำเนินการ'],
+                    labels: ['อัปโหลดแล้ว', 'ยังไม่อัปโหลด'],
                     datasets: [{
-                        data: [uploaded, pending],
+                        data: [uploaded, pendingUpload],
                         backgroundColor: [colors.emerald, colors.rose],
                         borderWidth: 0,
                         hoverOffset: 4
@@ -297,13 +331,41 @@
                     maintainAspectRatio: false,
                     cutout: '75%',
                     plugins: {
-                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15 } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8 }
                     }
                 }
             });
 
-            // Data for Bar Chart
+            // --- 2. Doughnut Chart: Presentation Status ---
+            const presented = data.filter(d => d.presented).length;
+            const pendingPresent = data.length - presented;
+
+            if (presentChartInstance) presentChartInstance.destroy();
+            const ctxPresent = document.getElementById('presentChart').getContext('2d');
+            presentChartInstance = new Chart(ctxPresent, {
+                type: 'doughnut',
+                data: {
+                    labels: ['นำเสนอแล้ว', 'ยังไม่นำเสนอ'],
+                    datasets: [{
+                        data: [presented, pendingPresent],
+                        backgroundColor: [colors.purple, colors.amber],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15 } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8 }
+                    }
+                }
+            });
+
+            // --- 3. Bar Chart: By Year ---
             const years = [1, 2, 3, 4];
             const completedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
             const pendingByYear = years.map(y => data.filter(d => d.year === y && !d.upload).length);
@@ -316,13 +378,13 @@
                     labels: ['ชั้นปีที่ 1', 'ชั้นปีที่ 2', 'ชั้นปีที่ 3', 'ชั้นปีที่ 4'],
                     datasets: [
                         {
-                            label: 'อัปโหลดแล้ว',
+                            label: 'อัปโหลด มคอ. แล้ว',
                             data: completedByYear,
                             backgroundColor: colors.emerald,
                             borderRadius: 4,
                         },
                         {
-                            label: 'รอดำเนินการ',
+                            label: 'รออัปโหลด มคอ.',
                             data: pendingByYear,
                             backgroundColor: colors.slate200,
                             borderRadius: 4,
