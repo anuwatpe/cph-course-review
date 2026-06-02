@@ -73,6 +73,10 @@
                     </div>
                 </div>
             </div>
+<<<<<<< HEAD
+=======
+            <!-- ปรับแก้ปุ่มตรงนี้ครับ -->
+>>>>>>> b9648ff82db9cb7823e3e889feaba9ce285d4b35
             <a href="https://docs.google.com/spreadsheets/d/1fquORX-yAnmRZMWwC0Sh6gSlQrDWzpGwHH43_K_SW2E/edit?usp=sharing" target="_blank" class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-base w-full sm:w-auto whitespace-nowrap">
                 <i data-lucide="upload-cloud" class="w-5 h-5"></i>
                 <span>ลงเวลาและอัปโหลดไฟล์ มคอ.</span>
@@ -459,7 +463,6 @@
         };
 
         function updateCharts(data) {
-            // --- 1. Doughnut Chart: Booking Status ---
             const booked = data.filter(d => d.booking).length;
             const pendingBooking = data.length - booked;
 
@@ -488,7 +491,6 @@
                 }
             });
 
-            // --- 2. Doughnut Chart: Presentation Status ---
             const presented = data.filter(d => d.presented).length;
             const pendingPresent = data.length - presented;
 
@@ -517,7 +519,6 @@
                 }
             });
 
-            // --- 3. Doughnut Chart: Upload Status ---
             const uploaded = data.filter(d => d.upload).length;
             const pendingUpload = data.length - uploaded;
 
@@ -546,7 +547,6 @@
                 }
             });
 
-            // --- 4. Bar Chart: By Year (Grouped and Stacked showing all 3 steps) ---
             const years = [1, 2, 3, 4];
             
             const bookedByYear = years.map(y => data.filter(d => d.year === y && d.booking).length);
