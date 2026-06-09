@@ -73,7 +73,6 @@
                     </div>
                 </div>
             </div>
-            <!-- ปรับแก้ปุ่มตรงนี้ครับ -->
             <a href="https://docs.google.com/spreadsheets/d/1fquORX-yAnmRZMWwC0Sh6gSlQrDWzpGwHH43_K_SW2E/edit?usp=sharing" target="_blank" class="bg-primary hover:bg-blue-700 text-white p-2.5 rounded-lg shadow-sm transition flex items-center justify-center gap-2 text-base w-full sm:w-auto whitespace-nowrap">
                 <i data-lucide="upload-cloud" class="w-5 h-5"></i>
                 <span>ลงเวลาและอัปโหลดไฟล์ มคอ.</span>
@@ -168,6 +167,17 @@
                 <input type="text" id="searchInput" placeholder="ค้นหารายวิชา, อาจารย์..." class="pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-base focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary w-full sm:w-72">
             </div>
         </div>
+
+        <!-- กล่องข้อมูลระเบียบเกรด C ขึ้นไปสำหรับหมวดวิชาชีพ -->
+        <div class="px-6 py-2">
+            <div class="flex items-start md:items-center gap-3 text-sm md:text-base text-amber-800 bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm">
+                <i data-lucide="alert-circle" class="w-6 h-6 text-amber-600 shrink-0 mt-0.5 md:mt-0"></i>
+                <div>
+                    <span class="font-semibold">ข้อกำหนดทางวิชาการ:</span> รายวิชาใน <span class="font-bold underline text-amber-900">หมวดวิชาชีพ</span> นักศึกษาจะต้องได้รับระดับคะแนนตัวอักษรไม่ต่ำกว่า <span class="font-bold text-amber-950 bg-amber-200/80 px-2 py-0.5 rounded-md border border-amber-300">C (หรือ 2.0)</span> ขึ้นไป จึงจะผ่านเกณฑ์รายวิชาและสำเร็จการศึกษา
+                </div>
+            </div>
+        </div>
+
         <div class="overflow-x-auto no-scrollbar">
             <table class="w-full text-left text-base text-slate-600">
                 <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100 whitespace-nowrap">
@@ -176,6 +186,7 @@
                         <th class="px-6 py-4">รหัสวิชา</th>
                         <th class="px-6 py-4">ชื่อรายวิชา</th>
                         <th class="px-6 py-4">ชั้นปี</th>
+                        <th class="px-6 py-4">หมวดวิชา</th>
                         <th class="px-6 py-4">ผู้รับผิดชอบ</th>
                         <th class="px-6 py-4">ลงเวลาวิพากษ์</th>
                         <th class="px-6 py-4">สถานะการนำเสนอ</th>
@@ -274,7 +285,11 @@
 
                     const fileLink = row['ลิงก์ไฟล์'] || row['Link'] || row['ลิงค์ไฟล์ มคอ.'] || '';
 
-                    return { id, name, year, instructor, upload, booking, presented, termYear, fileLink };
+                    // ดึงข้อมูลฟิลด์ "หมวดวิชาชีพ"
+                    const proStr = (row['หมวดวิชาชีพ'] || row['วิชาชีพ'] || row['หมวด'] || '').toString().trim().toUpperCase();
+                    const isPro = proStr === 'TRUE' || proStr === 'ใช่' || proStr === 'YES' || proStr === 'วิชาชีพ';
+
+                    return { id, name, year, instructor, upload, booking, presented, termYear, fileLink, isPro };
                 }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                 
                 document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
@@ -393,7 +408,7 @@
             tableBody.innerHTML = '';
             
             if(data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="8" class="px-6 py-8 text-center text-slate-500">ไม่พบข้อมูล กรุณาเลือกเทอมการศึกษา</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-slate-500">ไม่พบข้อมูล กรุณาเลือกเทอมการศึกษา</td></tr>`;
             }
 
             data.forEach(item => {
@@ -416,12 +431,18 @@
                     ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200"><span class="w-2 h-2 rounded-full bg-purple-500"></span>นำเสนอแล้ว</span>`
                     : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500"></span>ยังไม่นำเสนอ</span>`;
 
+                // Badge สำหรับคอลัมน์ "หมวดวิชาชีพ"
+                const proBadge = item.isPro 
+                    ? `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>วิชาชีพ (ต้องได้ ≥ C)</span>`
+                    : `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200">ทั่วไป</span>`;
+
                 const row = `
                     <tr class="hover:bg-slate-50/50 transition">
                         <td class="px-6 py-4 font-medium text-slate-500 whitespace-nowrap">${item.termYear}</td>
                         <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">${item.id}</td>
                         <td class="px-6 py-4">${item.name}</td>
                         <td class="px-6 py-4 whitespace-nowrap">ปี ${item.year}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${proBadge}</td>
                         <td class="px-6 py-4">${item.instructor}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${bookingBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${presentBadge}</td>
@@ -460,6 +481,7 @@
         };
 
         function updateCharts(data) {
+            // --- 1. Doughnut Chart: Booking Status ---
             const booked = data.filter(d => d.booking).length;
             const pendingBooking = data.length - booked;
 
@@ -479,7 +501,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '55%', // ปรับขนาดความกว้างเพิ่มขึ้นเพื่อให้แถบหนา ตัวเลขเด่นชัดและสวยงาม (จากเดิม 70%)
+                    cutout: '55%',
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
@@ -488,6 +510,7 @@
                 }
             });
 
+            // --- 2. Doughnut Chart: Presentation Status ---
             const presented = data.filter(d => d.presented).length;
             const pendingPresent = data.length - presented;
 
@@ -507,7 +530,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '55%', // ปรับขนาดความกว้างเพิ่มขึ้นเพื่อให้แถบหนา ตัวเลขเด่นชัดและสวยงาม (จากเดิม 70%)
+                    cutout: '55%',
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
@@ -516,6 +539,7 @@
                 }
             });
 
+            // --- 3. Doughnut Chart: Upload Status ---
             const uploaded = data.filter(d => d.upload).length;
             const pendingUpload = data.length - uploaded;
 
@@ -535,7 +559,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '55%', // ปรับขนาดความกว้างเพิ่มขึ้นเพื่อให้แถบหนา ตัวเลขเด่นชัดและสวยงาม (จากเดิม 70%)
+                    cutout: '55%',
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
@@ -544,6 +568,7 @@
                 }
             });
 
+            // --- 4. Bar Chart: By Year ---
             const years = [1, 2, 3, 4];
             
             const bookedByYear = years.map(y => data.filter(d => d.year === y && d.booking).length);
