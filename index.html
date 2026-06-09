@@ -44,23 +44,30 @@
         .card { background-color: white; border-radius: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #f1f5f9; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* สไตล์กำหนดสำหรับความกว้างขั้นต่ำของตารางบนหน้าจอเล็กเพื่อให้ปัดดูได้ไม่บีบตัว */
+        @media (max-width: 1024px) {
+            .responsive-table {
+                min-width: 950px;
+            }
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased font-sans p-4 md:p-8">
 
     <!-- Header -->
-    <header class="mb-8 flex flex-col md:flex-row md:items-start md:items-center justify-between gap-4">
+    <header class="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-            <h1 class="text-3xl font-semibold text-slate-900 flex items-center gap-2">
-                <i data-lucide="layout-dashboard" class="text-primary w-8 h-8"></i>
+            <h1 class="text-2xl md:text-3xl font-semibold text-slate-900 flex items-center gap-2">
+                <i data-lucide="layout-dashboard" class="text-primary w-8 h-8 shrink-0"></i>
                 ระบบติดตามการวิพากษ์รายวิชา
             </h1>
-            <h2 class="text-lg text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
-            <p class="text-slate-500 text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
+            <h2 class="text-base md:text-lg text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
+            <p class="text-slate-500 text-sm md:text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
         </div>
         
         <!-- ตัวกรอง และ ปุ่ม Action -->
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto" id="multiSelectContainer">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto" id="multiSelectContainer">
             <div class="relative w-full sm:w-auto">
                 <button id="multiSelectBtn" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-1 focus:ring-primary focus:border-primary px-4 py-2.5 shadow-sm cursor-pointer min-w-[220px] w-full flex justify-between items-center transition-all hover:bg-slate-50">
                     <span id="multiSelectLabel" class="truncate font-medium">กำลังโหลด...</span>
@@ -81,7 +88,7 @@
     </header>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
                 <i data-lucide="book-open" class="w-7 h-7"></i>
@@ -127,21 +134,21 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <!-- 1. กราฟโดนัทชาร์ต สำหรับการลงเวลา -->
         <div class="card p-6">
-            <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการลงเวลา</h2>
+            <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4 text-center">สถานะการลงเวลา</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="bookingChart"></canvas>
             </div>
         </div>
         <!-- 2. กราฟโดนัทชาร์ต สถานะการนำเสนอ -->
         <div class="card p-6">
-            <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
+            <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4 text-center">สถานะการนำเสนอ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="presentChart"></canvas>
             </div>
         </div>
         <!-- 3. กราฟโดนัทชาร์ต สถานะอัปโหลดแผนฯ -->
         <div class="card p-6">
-            <h2 class="text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
+            <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="statusChart"></canvas>
             </div>
@@ -151,7 +158,7 @@
     <!-- Bar Chart -->
     <div class="grid grid-cols-1 gap-6 mb-8">
         <div class="card p-6">
-            <h2 class="text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
+            <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4">ภาพรวมรายวิชาจำแนกตามชั้นปี</h2>
             <div class="relative h-64 w-full">
                 <canvas id="yearChart"></canvas>
             </div>
@@ -161,7 +168,14 @@
     <!-- Table Section -->
     <div class="card overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h2 class="text-xl font-medium text-slate-800">ตารางสรุปการดำเนินการรายวิชา</h2>
+            <div>
+                <h2 class="text-xl font-medium text-slate-800">ตารางสรุปการดำเนินการรายวิชา</h2>
+                <!-- คำชี้แจงการเลื่อนตารางสำหรับผู้ใช้มือถือ -->
+                <p class="text-xs text-primary lg:hidden flex items-center gap-1 mt-1">
+                    <i data-lucide="chevrons-left-right" class="w-3.5 h-3.5 animate-bounce"></i>
+                    ปัดตารางซ้าย-ขวาเพื่อดูข้อมูลเพิ่มเติม
+                </p>
+            </div>
             <div class="relative">
                 <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5"></i>
                 <input type="text" id="searchInput" placeholder="ค้นหารายวิชา, อาจารย์..." class="pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg text-base focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary w-full sm:w-72">
@@ -178,19 +192,19 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto no-scrollbar">
-            <table class="w-full text-left text-base text-slate-600">
+        <div class="overflow-x-auto no-scrollbar w-full max-w-full">
+            <table class="w-full text-left text-base text-slate-600 responsive-table">
                 <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100 whitespace-nowrap">
                     <tr>
-                        <th class="px-6 py-4">เทอม/ปี</th>
-                        <th class="px-6 py-4">รหัสวิชา</th>
+                        <th class="px-6 py-4 w-28">เทอม/ปี</th>
+                        <th class="px-6 py-4 w-28">รหัสวิชา</th>
                         <th class="px-6 py-4">ชื่อรายวิชา</th>
-                        <th class="px-6 py-4">ชั้นปี</th>
-                        <th class="px-6 py-4">หมวดวิชา</th>
-                        <th class="px-6 py-4">ผู้รับผิดชอบ</th>
-                        <th class="px-6 py-4">ลงเวลาวิพากษ์</th>
-                        <th class="px-6 py-4">สถานะการนำเสนอ</th>
-                        <th class="px-6 py-4">อัปโหลด มคอ.</th>
+                        <th class="px-6 py-4 w-24">ชั้นปี</th>
+                        <th class="px-6 py-4 w-48">หมวดวิชา</th>
+                        <th class="px-6 py-4 w-44">ผู้รับผิดชอบ</th>
+                        <th class="px-6 py-4 w-36">ลงเวลาวิพากษ์</th>
+                        <th class="px-6 py-4 w-36">สถานะการนำเสนอ</th>
+                        <th class="px-6 py-4 w-44">อัปโหลด มคอ.</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
@@ -198,8 +212,12 @@
                 </tbody>
             </table>
         </div>
-        <div class="p-4 border-t border-slate-100 bg-slate-50 text-sm text-slate-500 text-center">
-            อัปเดตข้อมูลล่าสุด: <span id="lastUpdate"></span>
+        <div class="p-4 border-t border-slate-100 bg-slate-50 text-sm text-slate-500 text-center flex items-center justify-center gap-2">
+            <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            อัปเดตข้อมูลล่าสุด: <span id="lastUpdate"></span> (อัปเดตอัตโนมัติทุก 5 นาที)
         </div>
     </div>
 
@@ -442,23 +460,38 @@
                     ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200"><span class="w-2 h-2 rounded-full bg-purple-500"></span>นำเสนอแล้ว</span>`
                     : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500"></span>ยังไม่นำเสนอ</span>`;
 
-                // Badge แบนเนอร์แสดงเป็นรายวิชาในตาราง (แยกแสดง "พื้นฐานวิชาชีพ" หรือ "ทั่วไป" ออกมาตามค่าจริง)
+                // Badge แบนเนอร์แสดงเป็นรายวิชาในตาราง (แยกแสดงสีตามหมวดวิชาจริง)
                 let proBadge = '';
                 if (item.isPro) {
-                    proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>วิชาชีพ (ต้องได้ ≥ C)</span>`;
+                    proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-amber-100 text-amber-900 border border-amber-300 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>วิชาชีพ (ต้องได้ ≥ C)</span>`;
                 } else {
                     const displayCat = (item.rawCategory && item.rawCategory !== 'FALSE' && item.rawCategory !== '0' && item.rawCategory.toUpperCase() !== 'FALSE') ? item.rawCategory : 'ทั่วไป';
-                    proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200">${displayCat}</span>`;
+                    const catLower = displayCat.toUpperCase();
+                    
+                    if (catLower.includes('พื้นฐาน')) {
+                        // หมวดพื้นฐานวิชาชีพ -> สีฟ้า Blue
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-blue-50 text-blue-800 border border-blue-200">${displayCat}</span>`;
+                    } else if (catLower.includes('เลือกเสรี') || catLower.includes('เลือก') || catLower.includes('ELECTIVE')) {
+                        // หมวดวิชาเลือกเสรี -> สีม่วง Purple
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-purple-50 text-purple-800 border border-purple-200">${displayCat}</span>`;
+                    } else if (catLower.includes('ทั่วไป') || catLower.includes('ศึกษาทั่วไป') || catLower.includes('GEN')) {
+                        // หมวดวิชาศึกษาทั่วไป -> สีเทา Slate
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200">${displayCat}</span>`;
+                    } else {
+                        // หมวดแกน หรือ หมวดอื่นๆ -> สีเขียว Emerald
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">${displayCat}</span>`;
+                    }
                 }
 
+                // whitespace-normal บนวิชาและรหัสวิชา ช่วยแก้ไขปัญหารายการล้นจอและทำให้แสดงผลในกรอบที่สวยงามได้ลงตัว
                 const row = `
-                    <tr class="hover:bg-slate-50/50 transition">
+                    <tr class="hover:bg-slate-50/50 transition text-sm md:text-base">
                         <td class="px-6 py-4 font-medium text-slate-500 whitespace-nowrap">${item.termYear}</td>
                         <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">${item.id}</td>
-                        <td class="px-6 py-4">${item.name}</td>
+                        <td class="px-6 py-4 whitespace-normal break-words max-w-xs font-medium text-slate-800">${item.name}</td>
                         <td class="px-6 py-4 whitespace-nowrap">ปี ${item.year}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${proBadge}</td>
-                        <td class="px-6 py-4">${item.instructor}</td>
+                        <td class="px-6 py-4 whitespace-normal max-w-xs">${item.instructor}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${bookingBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${presentBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${uploadContent}</td>
@@ -636,7 +669,7 @@
         }
 
         loadData();
-        setInterval(loadData, 300000);
+        setInterval(loadData, 300000); // รีเฟรชข้อมูลอัตโนมัติจาก Google Sheets ทุก ๆ 5 นาที
     </script>
 </body>
 </html>
