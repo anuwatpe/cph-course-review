@@ -285,18 +285,22 @@
 
                     const fileLink = row['ลิงก์ไฟล์'] || row['Link'] || row['ลิงค์ไฟล์ มคอ.'] || '';
 
-                    // ** ปรับปรุงการดึงข้อมูลและตรวจจับคำของ "หมวดวิชาชีพ" ให้มีความยืดหยุ่นสูงขึ้น **
-                    const proStr = (row['หมวดวิชาชีพ'] || row['วิชาชีพ'] || row['หมวดวิชา'] || row['หมวด'] || row['ประเภทวิชา'] || row['กลุ่มวิชา'] || '').toString().trim().toUpperCase();
+                    // ** ปรับปรุงการดึงข้อมูลและตรวจจับคำของ "หมวดวิชาชีพ" โดยคัดแยก "พื้นฐานวิชาชีพ" ออก **
+                    const proRaw = row['หมวดวิชาชีพ'] || row['วิชาชีพ'] || row['หมวดวิชา'] || row['หมวด'] || row['ประเภทวิชา'] || row['กลุ่มวิชา'] || '';
+                    const proStr = proRaw.toString().trim().toUpperCase();
                     
-                    // เช็กว่ามีคำว่า "วิชาชีพ" ปรากฏอยู่ หรือระบุค่าเป็นสัญลักษณ์ค่าบูลีนความจริงต่างๆ หรือไม่
-                    const isPro = proStr.includes('วิชาชีพ') || 
+                    const hasProWord = proStr.includes('วิชาชีพ');
+                    const isFoundation = proStr.includes('พื้นฐาน') || proStr.includes('BASIC') || proStr.includes('FOUNDATION');
+
+                    // จะเป็นวิชาชีพที่ต้องได้เกรด C ก็ต่อเมื่อมีคำว่า "วิชาชีพ" แต่ต้องไม่มีคำว่า "พื้นฐาน" อยู่ด้วย
+                    const isPro = (hasProWord && !isFoundation) || 
                                   proStr === 'TRUE' || 
                                   proStr === 'ใช่' || 
                                   proStr === 'YES' || 
                                   proStr === 'Y' || 
                                   proStr === '1';
 
-                    return { id, name, year, instructor, upload, booking, presented, termYear, fileLink, isPro };
+                    return { id, name, year, instructor, upload, booking, presented, termYear, fileLink, isPro, rawCategory: proRaw.toString().trim() };
                 }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                 
                 document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
@@ -438,10 +442,14 @@
                     ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200"><span class="w-2 h-2 rounded-full bg-purple-500"></span>นำเสนอแล้ว</span>`
                     : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500"></span>ยังไม่นำเสนอ</span>`;
 
-                // Badge แบนเนอร์แสดงเป็นรายวิชาในตาราง
-                const proBadge = item.isPro 
-                    ? `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>วิชาชีพ (ต้องได้ ≥ C)</span>`
-                    : `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200">ทั่วไป</span>`;
+                // Badge แบนเนอร์แสดงเป็นรายวิชาในตาราง (แยกแสดง "พื้นฐานวิชาชีพ" หรือ "ทั่วไป" ออกมาตามค่าจริง)
+                let proBadge = '';
+                if (item.isPro) {
+                    proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-amber-50 text-amber-800 border border-amber-200 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>วิชาชีพ (ต้องได้ ≥ C)</span>`;
+                } else {
+                    const displayCat = (item.rawCategory && item.rawCategory !== 'FALSE' && item.rawCategory !== '0' && item.rawCategory.toUpperCase() !== 'FALSE') ? item.rawCategory : 'ทั่วไป';
+                    proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200">${displayCat}</span>`;
+                }
 
                 const row = `
                     <tr class="hover:bg-slate-50/50 transition">
