@@ -48,7 +48,7 @@
         /* สไตล์กำหนดสำหรับความกว้างขั้นต่ำของตารางบนหน้าจอเล็กเพื่อให้ปัดดูได้ไม่บีบตัว */
         @media (max-width: 1024px) {
             .responsive-table {
-                min-width: 950px;
+                min-width: 900px;
             }
         }
     </style>
@@ -200,11 +200,11 @@
                         <th class="px-6 py-4 w-28">รหัสวิชา</th>
                         <th class="px-6 py-4">ชื่อรายวิชา</th>
                         <th class="px-6 py-4 w-24">ชั้นปี</th>
-                        <th class="px-6 py-4 w-48">หมวดวิชา</th>
+                        <th class="px-6 py-4 w-44">หมวดวิชา</th>
                         <th class="px-6 py-4 w-44">ผู้รับผิดชอบ</th>
-                        <th class="px-6 py-4 w-36">ลงเวลาวิพากษ์</th>
-                        <th class="px-6 py-4 w-36">สถานะการนำเสนอ</th>
-                        <th class="px-6 py-4 w-44">อัปโหลด มคอ.</th>
+                        <th class="px-6 py-4 w-32">ลงเวลาวิพากษ์</th>
+                        <th class="px-6 py-4 w-32">สถานะการนำเสนอ</th>
+                        <th class="px-6 py-4 w-36">อัปโหลด มคอ.</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
@@ -444,46 +444,51 @@
                 let uploadContent = '';
                 if (item.upload) {
                     if (item.fileLink && item.fileLink !== '') {
-                        uploadContent = `<a href="${item.fileLink}" target="_blank" class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>สำเร็จ (คลิกเพื่อดูไฟล์)</a>`;
+                        // ปรับขนาดและดีไซน์ปุ่มเป็น "สำเร็จ" พร้อมไอคอนลิงก์ภายนอก เพื่อไม่ให้ล้นจอในหน้าจอ 13 นิ้ว
+                        uploadContent = `<a href="${item.fileLink}" target="_blank" class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition shrink-0 whitespace-nowrap">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                            <span>สำเร็จ</span>
+                            <i data-lucide="external-link" class="w-3.5 h-3.5 ml-1 text-emerald-600 shrink-0"></i>
+                        </a>`;
                     } else {
-                        uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>สำเร็จ</span>`;
+                        uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>สำเร็จ</span>`;
                     }
                 } else {
-                    uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200"><span class="w-2 h-2 rounded-full bg-rose-500"></span>รอดำเนินการ</span>`;
+                    uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>รอดำเนินการ</span>`;
                 }
                 
                 const bookingBadge = item.booking 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200"><span class="w-2 h-2 rounded-full bg-blue-500"></span>ลงเวลาแล้ว</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200"><span class="w-2 h-2 rounded-full bg-slate-400"></span>ยังไม่ลงเวลา</span>`;
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>ลงเวลาแล้ว</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>ยังไม่ลงเวลา</span>`;
 
                 const presentBadge = item.presented 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200"><span class="w-2 h-2 rounded-full bg-purple-500"></span>นำเสนอแล้ว</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200"><span class="w-2 h-2 rounded-full bg-amber-500"></span>ยังไม่นำเสนอ</span>`;
+                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>นำเสนอแล้ว</span>`
+                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>ยังไม่นำเสนอ</span>`;
 
                 // Badge แบนเนอร์แสดงเป็นรายวิชาในตาราง (แยกแสดงสีตามหมวดวิชาจริง)
                 let proBadge = '';
                 if (item.isPro) {
-                    proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-amber-100 text-amber-900 border border-amber-300 shadow-sm"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>วิชาชีพ (ต้องได้ ≥ C)</span>`;
+                    proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-amber-100 text-amber-900 border border-amber-300 shadow-sm shrink-0 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>วิชาชีพ (ต้องได้ ≥ C)</span>`;
                 } else {
                     const displayCat = (item.rawCategory && item.rawCategory !== 'FALSE' && item.rawCategory !== '0' && item.rawCategory.toUpperCase() !== 'FALSE') ? item.rawCategory : 'ทั่วไป';
                     const catLower = displayCat.toUpperCase();
                     
                     if (catLower.includes('พื้นฐาน')) {
                         // หมวดพื้นฐานวิชาชีพ -> สีฟ้า Blue
-                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-blue-50 text-blue-800 border border-blue-200">${displayCat}</span>`;
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-blue-50 text-blue-800 border border-blue-200 shrink-0 whitespace-nowrap">${displayCat}</span>`;
                     } else if (catLower.includes('เลือกเสรี') || catLower.includes('เลือก') || catLower.includes('ELECTIVE')) {
                         // หมวดวิชาเลือกเสรี -> สีม่วง Purple
-                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-purple-50 text-purple-800 border border-purple-200">${displayCat}</span>`;
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-purple-50 text-purple-800 border border-purple-200 shrink-0 whitespace-nowrap">${displayCat}</span>`;
                     } else if (catLower.includes('ทั่วไป') || catLower.includes('ศึกษาทั่วไป') || catLower.includes('GEN')) {
                         // หมวดวิชาศึกษาทั่วไป -> สีเทา Slate
-                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200">${displayCat}</span>`;
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0 whitespace-nowrap">${displayCat}</span>`;
                     } else {
                         // หมวดแกน หรือ หมวดอื่นๆ -> สีเขียว Emerald
-                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">${displayCat}</span>`;
+                        proBadge = `<span class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 shrink-0 whitespace-nowrap">${displayCat}</span>`;
                     }
                 }
 
-                // whitespace-normal บนวิชาและรหัสวิชา ช่วยแก้ไขปัญหารายการล้นจอและทำให้แสดงผลในกรอบที่สวยงามได้ลงตัว
+                // whitespace-normal บนวิชาและชื่อวิชา เพื่อป้องการล้นจอและทำให้แสดงผลในกรอบที่สวยงามได้ลงตัว
                 const row = `
                     <tr class="hover:bg-slate-50/50 transition text-sm md:text-base">
                         <td class="px-6 py-4 font-medium text-slate-500 whitespace-nowrap">${item.termYear}</td>
@@ -499,6 +504,11 @@
                 `;
                 tableBody.insertAdjacentHTML('beforeend', row);
             });
+
+            // Re-initialize Lucide icons for dynamically added HTML badges (เช่น ไอคอน external-link)
+            lucide.createIcons();
+            
+            // อัปเดตข้อมูลกราฟด้วย
             updateCharts(data);
         }
 
@@ -529,6 +539,7 @@
         };
 
         function updateCharts(data) {
+            // --- 1. Doughnut Chart: Booking Status ---
             const booked = data.filter(d => d.booking).length;
             const pendingBooking = data.length - booked;
 
@@ -548,7 +559,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '55%',
+                    cutout: '55%', 
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
@@ -557,6 +568,7 @@
                 }
             });
 
+            // --- 2. Doughnut Chart: Presentation Status ---
             const presented = data.filter(d => d.presented).length;
             const pendingPresent = data.length - presented;
 
@@ -576,7 +588,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '55%',
+                    cutout: '55%', 
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
@@ -585,6 +597,7 @@
                 }
             });
 
+            // --- 3. Doughnut Chart: Upload Status ---
             const uploaded = data.filter(d => d.upload).length;
             const pendingUpload = data.length - uploaded;
 
@@ -604,7 +617,7 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    cutout: '55%',
+                    cutout: '55%', 
                     plugins: {
                         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
                         tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
@@ -613,6 +626,7 @@
                 }
             });
 
+            // --- 4. Bar Chart: By Year (Grouped and Stacked showing all 3 steps) ---
             const years = [1, 2, 3, 4];
             
             const bookedByYear = years.map(y => data.filter(d => d.year === y && d.booking).length);
@@ -669,7 +683,7 @@
         }
 
         loadData();
-        setInterval(loadData, 300000); // รีเฟรชข้อมูลอัตโนมัติจาก Google Sheets ทุก ๆ 5 นาที
+        setInterval(loadData, 300000);
     </script>
 </body>
 </html>
