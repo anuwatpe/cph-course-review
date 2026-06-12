@@ -64,6 +64,7 @@ function onOpen() {
     .addItem('ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์', 'makeLinkedFilesViewableByLink')
     .addItem('สร้างโฟลเดอร์และสแกนไฟล์', 'createFoldersAndSyncDriveLinks')
     .addItem('สร้าง Trigger ทุก 5 นาที', 'createDriveSyncTrigger')
+    .addItem('ปิด Trigger อัตโนมัติ', 'deleteDriveSyncTriggers')
     .addToUi();
 }
 
@@ -156,6 +157,20 @@ function createDriveSyncTrigger() {
   }
 
   notify_('ตั้งค่าให้สแกนไฟล์อัตโนมัติทุก 5 นาทีแล้ว');
+}
+
+function deleteDriveSyncTriggers() {
+  const handler = 'syncDriveLinksToSheet';
+  let deletedCount = 0;
+
+  ScriptApp.getProjectTriggers().forEach(trigger => {
+    if (trigger.getHandlerFunction() === handler) {
+      ScriptApp.deleteTrigger(trigger);
+      deletedCount += 1;
+    }
+  });
+
+  notify_(`ปิด Trigger อัตโนมัติแล้ว ${deletedCount} รายการ`);
 }
 
 function getTargetSheet_() {
