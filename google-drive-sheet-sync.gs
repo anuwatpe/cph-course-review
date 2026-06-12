@@ -36,9 +36,11 @@ const DRIVE_SYNC_CONFIG = {
   // Set false if your school controls sharing through Google groups or domains.
   MAKE_FILES_VIEWABLE_BY_LINK: true,
   MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
+  AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS: true,
 
   COURSE_CODE_HEADERS: ['รหัสวิชา', 'รหัส', 'Course Code', 'course_code'],
   COURSE_NAME_HEADERS: ['ชื่อรายวิชา', 'รายวิชา', 'Course Name', 'course_name'],
+  INSTRUCTOR_EMAIL_HEADERS: ['อีเมล', 'อีเมลผู้รับผิดชอบ', 'อีเมลอาจารย์', 'Instructor Email', 'teacher_email'],
   TERM_HEADERS: ['ภาคการศึกษา', 'เทอม', 'Term'],
   ACADEMIC_YEAR_HEADERS: ['ปีการศึกษา', 'Academic Year', 'year'],
   FILE_LINK_HEADERS: ['ลิงก์ไฟล์', 'Link', 'ลิงค์ไฟล์ มคอ.'],
@@ -46,6 +48,7 @@ const DRIVE_SYNC_CONFIG = {
   FOLDER_ID_HEADERS: ['Drive Folder ID', 'Folder ID', 'รหัสโฟลเดอร์ Drive', 'โฟลเดอร์ไฟล์'],
   FOLDER_LINK_HEADERS: ['ลิงก์โฟลเดอร์อัปโหลด', 'Drive Folder Link', 'Folder Link'],
   TERM_FOLDER_LINK_HEADERS: ['ลิงก์โฟลเดอร์เทอม', 'Term Folder Link'],
+  FOLDER_SHARED_WITH_HEADERS: ['แชร์โฟลเดอร์ให้', 'Folder Shared With'],
   FILE_ID_HEADERS: ['Google Drive File ID', 'File ID'],
   FILE_NAME_HEADERS: ['ชื่อไฟล์ล่าสุด', 'File Name'],
   FOUND_AT_HEADERS: ['วันที่พบไฟล์', 'Found At']
@@ -56,6 +59,7 @@ function onOpen() {
     .createMenu('Drive Sync')
     .addItem('สร้างโฟลเดอร์รายวิชา', 'createCourseFoldersFromSheet')
     .addItem('จัดโฟลเดอร์เดิมเข้าเทอม', 'organizeExistingCourseFoldersByTerm')
+    .addItem('แชร์โฟลเดอร์ให้อาจารย์', 'shareCourseFoldersWithInstructors')
     .addItem('สแกนไฟล์และเติมลิงก์', 'syncDriveLinksToSheet')
     .addItem('ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์', 'makeLinkedFilesViewableByLink')
     .addItem('สร้างโฟลเดอร์และสแกนไฟล์', 'createFoldersAndSyncDriveLinks')
@@ -81,6 +85,11 @@ function organizeExistingCourseFoldersByTerm() {
 function makeLinkedFilesViewableByLink() {
   const result = makeSheetLinkedFilesViewable_();
   notify_(`ตั้งสิทธิ์ไฟล์แล้ว ${result.updatedCount} ไฟล์, ข้าม ${result.skippedCount} ไฟล์`);
+}
+
+function shareCourseFoldersWithInstructors() {
+  const result = shareCourseFoldersWithInstructors_();
+  notify_(`แชร์โฟลเดอร์แล้ว ${result.sharedCount} รายวิชา, ข้าม ${result.skippedCount} รายวิชา`);
 }
 
 function syncDriveLinksToSheet() {
@@ -171,11 +180,13 @@ function getOrCreateColumns_(sheet) {
   return {
     courseCode,
     courseName: findColumn_(headers, DRIVE_SYNC_CONFIG.COURSE_NAME_HEADERS),
+    instructorEmail: findColumn_(headers, DRIVE_SYNC_CONFIG.INSTRUCTOR_EMAIL_HEADERS),
     term: findColumn_(headers, DRIVE_SYNC_CONFIG.TERM_HEADERS),
     academicYear: findColumn_(headers, DRIVE_SYNC_CONFIG.ACADEMIC_YEAR_HEADERS),
     folderId: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FOLDER_ID_HEADERS[0]),
     folderLink: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FOLDER_LINK_HEADERS[0]),
     termFolderLink: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.TERM_FOLDER_LINK_HEADERS[0]),
+    folderSharedWith: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FOLDER_SHARED_WITH_HEADERS[0]),
     fileLink: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FILE_LINK_HEADERS[0]),
     upload: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.UPLOAD_HEADERS[0]),
     fileId: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FILE_ID_HEADERS[0]),
@@ -230,6 +241,9 @@ function ensureCourseFolders_(forceCreate, providedSheet, providedColumns) {
       try {
         const folder = DriveApp.getFolderById(existingFolderId);
         const termFolder = getCourseParentFolder_(rootFolder, row, columns);
+        if (DRIVE_SYNC_CONFIG.AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS) {
+          shareFolderWithInstructors_(folder, row, columns, sheet, rowNumber);
+        }
         sheet.getRange(rowNumber, columns.folderLink).setValue(folder.getUrl());
         sheet.getRange(rowNumber, columns.termFolderLink).setValue(termFolder.getUrl());
         existingCount += 1;
@@ -248,6 +262,10 @@ function ensureCourseFolders_(forceCreate, providedSheet, providedColumns) {
 
     if (DRIVE_SYNC_CONFIG.MAKE_FOLDERS_VIEWABLE_BY_LINK) {
       folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
+
+    if (DRIVE_SYNC_CONFIG.AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS) {
+      shareFolderWithInstructors_(folder, row, columns, sheet, rowNumber);
     }
 
     sheet.getRange(rowNumber, columns.folderId).setValue(folder.getId());
@@ -302,6 +320,47 @@ function moveExistingCourseFoldersToTermFolders_() {
   });
 
   return { movedCount, skippedCount };
+}
+
+function shareCourseFoldersWithInstructors_() {
+  const sheet = getTargetSheet_();
+  const columns = getOrCreateColumns_(sheet);
+  const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastRow <= headerRow) {
+    return { sharedCount: 0, skippedCount: 0 };
+  }
+
+  const values = sheet.getRange(headerRow + 1, 1, lastRow - headerRow, lastColumn).getValues();
+  let sharedCount = 0;
+  let skippedCount = 0;
+
+  values.forEach((row, rowIndex) => {
+    const rowNumber = headerRow + 1 + rowIndex;
+    const folderId = extractDriveId_(row[columns.folderId - 1]);
+
+    if (!folderId || !columns.instructorEmail) {
+      skippedCount += 1;
+      return;
+    }
+
+    try {
+      const folder = DriveApp.getFolderById(folderId);
+      const emails = shareFolderWithInstructors_(folder, row, columns, sheet, rowNumber);
+      if (emails.length > 0) {
+        sharedCount += 1;
+      } else {
+        skippedCount += 1;
+      }
+    } catch (error) {
+      Logger.log(`Cannot share folder on row ${rowNumber}: ${error}`);
+      skippedCount += 1;
+    }
+  });
+
+  return { sharedCount, skippedCount };
 }
 
 function getOrCreateCourseRootFolder_() {
@@ -461,6 +520,32 @@ function makeSheetLinkedFilesViewable_() {
   });
 
   return { updatedCount, skippedCount };
+}
+
+function shareFolderWithInstructors_(folder, row, columns, sheet, rowNumber) {
+  if (!columns.instructorEmail) return [];
+
+  const emails = extractEmails_(row[columns.instructorEmail - 1]);
+  if (emails.length === 0) return [];
+
+  emails.forEach(email => {
+    try {
+      folder.addEditor(email);
+    } catch (error) {
+      Logger.log(`Cannot add editor ${email} on row ${rowNumber}: ${error}`);
+    }
+  });
+
+  sheet.getRange(rowNumber, columns.folderSharedWith).setValue(emails.join(', '));
+  return emails;
+}
+
+function extractEmails_(value) {
+  const text = String(value || '').trim();
+  if (!text) return [];
+
+  const matches = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+  return [...new Set(matches.map(email => email.toLowerCase()))];
 }
 
 function extractCourseCodeFromFileName_(fileName) {
