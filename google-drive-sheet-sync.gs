@@ -33,8 +33,8 @@ const DRIVE_SYNC_CONFIG = {
   ],
 
   // If true, files found by the script are changed to "anyone with the link can view".
-  // Keep false if your school controls sharing through Google groups or domains.
-  MAKE_FILES_VIEWABLE_BY_LINK: false,
+  // Set false if your school controls sharing through Google groups or domains.
+  MAKE_FILES_VIEWABLE_BY_LINK: true,
   MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
 
   COURSE_CODE_HEADERS: ['รหัสวิชา', 'รหัส', 'Course Code', 'course_code'],
@@ -57,6 +57,7 @@ function onOpen() {
     .addItem('สร้างโฟลเดอร์รายวิชา', 'createCourseFoldersFromSheet')
     .addItem('จัดโฟลเดอร์เดิมเข้าเทอม', 'organizeExistingCourseFoldersByTerm')
     .addItem('สแกนไฟล์และเติมลิงก์', 'syncDriveLinksToSheet')
+    .addItem('ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์', 'makeLinkedFilesViewableByLink')
     .addItem('สร้างโฟลเดอร์และสแกนไฟล์', 'createFoldersAndSyncDriveLinks')
     .addItem('สร้าง Trigger ทุก 5 นาที', 'createDriveSyncTrigger')
     .addToUi();
@@ -75,6 +76,11 @@ function createCourseFoldersFromSheet() {
 function organizeExistingCourseFoldersByTerm() {
   const result = moveExistingCourseFoldersToTermFolders_();
   notify_(`จัดโฟลเดอร์เข้าเทอมแล้ว ${result.movedCount} รายวิชา, ข้าม ${result.skippedCount} รายวิชา`);
+}
+
+function makeLinkedFilesViewableByLink() {
+  const result = makeSheetLinkedFilesViewable_();
+  notify_(`ตั้งสิทธิ์ไฟล์แล้ว ${result.updatedCount} ไฟล์, ข้าม ${result.skippedCount} ไฟล์`);
 }
 
 function syncDriveLinksToSheet() {
@@ -421,6 +427,42 @@ function makeFileViewableByLink_(fileId) {
     .setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 }
 
+function makeSheetLinkedFilesViewable_() {
+  const sheet = getTargetSheet_();
+  const columns = getOrCreateColumns_(sheet);
+  const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastRow <= headerRow) {
+    return { updatedCount: 0, skippedCount: 0 };
+  }
+
+  const values = sheet.getRange(headerRow + 1, 1, lastRow - headerRow, lastColumn).getValues();
+  let updatedCount = 0;
+  let skippedCount = 0;
+
+  values.forEach((row, rowIndex) => {
+    const rowNumber = headerRow + 1 + rowIndex;
+    const fileId = extractDriveId_(row[columns.fileId - 1]) || extractDriveId_(row[columns.fileLink - 1]);
+
+    if (!fileId) {
+      skippedCount += 1;
+      return;
+    }
+
+    try {
+      makeFileViewableByLink_(fileId);
+      updatedCount += 1;
+    } catch (error) {
+      Logger.log(`Cannot update file sharing on row ${rowNumber}: ${error}`);
+      skippedCount += 1;
+    }
+  });
+
+  return { updatedCount, skippedCount };
+}
+
 function extractCourseCodeFromFileName_(fileName) {
   const match = String(fileName || '').match(/[A-Za-z]{0,4}\d{4,8}[A-Za-z]{0,2}/);
   return match ? normalizeCourseCode_(match[0]) : '';
@@ -447,6 +489,9 @@ function extractDriveId_(value) {
 
   const fileMatch = text.match(/\/d\/([a-zA-Z0-9_-]+)/);
   if (fileMatch) return fileMatch[1];
+
+  const queryMatch = text.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (queryMatch) return queryMatch[1];
 
   return text;
 }

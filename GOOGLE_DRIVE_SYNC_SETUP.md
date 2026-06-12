@@ -37,6 +37,7 @@ COURSE_ROOT_FOLDER_ID: '',
 COURSE_ROOT_FOLDER_NAME: 'Course Review Uploads',
 AUTO_CREATE_COURSE_FOLDERS: true,
 GROUP_COURSE_FOLDERS_BY_TERM: true,
+MAKE_FILES_VIEWABLE_BY_LINK: true,
 ```
 
 ถ้า `COURSE_ROOT_FOLDER_ID` ว่าง สคริปต์จะสร้างโฟลเดอร์แม่ชื่อ `Course Review Uploads`
@@ -72,6 +73,29 @@ GROUP_COURSE_FOLDERS_BY_TERM: true,
 - `Drive Sync` > `จัดโฟลเดอร์เดิมเข้าเทอม`
 
 เมนูนี้จะย้ายเฉพาะโฟลเดอร์ที่มี `Drive Folder ID` อยู่ใน Sheet ตาม `ปีการศึกษา` และ `ภาคการศึกษา`
+
+## สิทธิ์การเข้าถึงไฟล์
+
+ถ้าลิงก์ไฟล์แสดงในเว็บแล้ว แต่เปิดไม่ได้หรือขึ้นว่าเป็น private แปลว่าไฟล์ใน Google Drive ยังไม่ได้เปิดสิทธิ์ให้ผู้ชมเว็บเข้าถึง
+
+ไม่จำเป็นต้องเปิดทั้งโฟลเดอร์ `Course Review Uploads` เป็นสาธารณะเสมอไป ทางที่คุมง่ายกว่าคือเปิดสิทธิ์เฉพาะไฟล์ที่ถูกนำไปแสดงบนเว็บเป็น `Anyone with the link can view`
+
+ค่าเริ่มต้นในสคริปต์ตอนนี้คือ:
+
+```js
+MAKE_FILES_VIEWABLE_BY_LINK: true,
+MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
+```
+
+หมายความว่า:
+
+- ไฟล์ที่สคริปต์สแกนเจอและเติมลง `ลิงก์ไฟล์` จะถูกตั้งสิทธิ์ให้เปิดผ่านลิงก์ได้
+- โฟลเดอร์รายวิชาและโฟลเดอร์แม่ยังไม่ถูกเปิดเป็นสาธารณะ
+- ถ้าไฟล์มีข้อมูลที่ไม่ควรเปิดสาธารณะ ให้เปลี่ยน `MAKE_FILES_VIEWABLE_BY_LINK` เป็น `false`
+
+ถ้ามีไฟล์ที่ถูกลิงก์ไปแล้วก่อนหน้านี้และยัง private อยู่ ให้ใช้เมนู:
+
+- `Drive Sync` > `ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์`
 
 ## คำอธิบายเมนู Drive Sync
 
@@ -119,8 +143,21 @@ GROUP_COURSE_FOLDERS_BY_TERM: true,
 - เติม `Google Drive File ID`
 - เติม `ชื่อไฟล์ล่าสุด`
 - เติม `วันที่พบไฟล์`
+- ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์ได้ เมื่อ `MAKE_FILES_VIEWABLE_BY_LINK` เป็น `true`
 
 ถ้าแถวยังไม่มี `Drive Folder ID` และ `AUTO_CREATE_COURSE_FOLDERS` เป็น `true` สคริปต์จะสร้างโฟลเดอร์รายวิชาให้ก่อน แล้วค่อยสแกนไฟล์
+
+### ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์
+
+ใช้เมื่อเว็บมีปุ่มลิงก์ไฟล์แล้ว แต่ผู้ใช้เปิดไฟล์ไม่ได้เพราะไฟล์ยังเป็น private
+
+เมนูนี้จะ:
+
+- อ่าน `Google Drive File ID` หรือ `ลิงก์ไฟล์` จากแต่ละแถวใน Sheet
+- ตั้งสิทธิ์ไฟล์เป็น `Anyone with the link can view`
+- ข้ามแถวที่ยังไม่มีไฟล์หรือลิงก์ไฟล์
+
+เมนูนี้เหมาะสำหรับแก้ไฟล์ย้อนหลัง ส่วนไฟล์ใหม่ในอนาคตจะถูกตั้งสิทธิ์อัตโนมัติเมื่อ `MAKE_FILES_VIEWABLE_BY_LINK` เป็น `true`
 
 ### สร้างโฟลเดอร์และสแกนไฟล์
 
