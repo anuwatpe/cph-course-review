@@ -49,7 +49,7 @@ COURSE_ROOT_FOLDER_NAME: 'Course Review Uploads',
 AUTO_CREATE_COURSE_FOLDERS: true,
 GROUP_COURSE_FOLDERS_BY_TERM: true,
 MAKE_FILES_VIEWABLE_BY_LINK: true,
-AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS: true,
+AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS: false,
 ```
 
 ถ้า `COURSE_ROOT_FOLDER_ID` ว่าง สคริปต์จะสร้างโฟลเดอร์แม่ชื่อ `Course Review Uploads`
@@ -129,11 +129,12 @@ MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
 ค่าเริ่มต้นในสคริปต์คือ:
 
 ```js
-AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS: true,
+AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS: false,
 MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
 ```
 
-เมื่อ `AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS` เป็น `true` เมนูสร้างโฟลเดอร์และเมนูสแกนไฟล์จะพยายามแชร์โฟลเดอร์รายวิชาให้อีเมลในคอลัมน์อาจารย์ด้วย
+ค่าเริ่มต้นตั้ง `AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS` เป็น `false` เพื่อป้องกันไม่ให้ trigger ส่งอีเมลแชร์โฟลเดอร์ซ้ำ ๆ ให้อาจารย์
+เมื่อต้องการแชร์โฟลเดอร์ ให้อัปเดตคอลัมน์ `อีเมล` แล้วกดเมนู `Drive Sync` > `แชร์โฟลเดอร์ให้อาจารย์` ด้วยตัวเอง
 
 ข้อควรทราบ: สิทธิ์อัปโหลดใน Google Drive ต้องเป็นสิทธิ์ editor ของโฟลเดอร์ ซึ่งแปลว่าอาจารย์มีสิทธิ์จัดการไฟล์ในโฟลเดอร์รายวิชานั้นด้วย ถ้าต้องการป้องกันการลบไฟล์อย่างเข้มงวดกว่า ควรใช้ Google Form แบบ File Upload หรือใช้ Shared Drive ที่กำหนด role แยกละเอียดกว่า
 
@@ -183,6 +184,7 @@ MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
 - เติมคอลัมน์ `แชร์โฟลเดอร์ให้`
 
 เมนูนี้ไม่เปิดโฟลเดอร์เป็นสาธารณะ และไม่แชร์โฟลเดอร์แม่ `Course Review Uploads`
+Google Drive อาจส่งอีเมลแจ้งเตือนเมื่อเพิ่ม editor ใหม่ ดังนั้นควรกดเมนูนี้เฉพาะตอนเริ่มแชร์ครั้งแรกหรือเมื่อเพิ่มอีเมลใหม่เท่านั้น
 
 ### สแกนไฟล์และเติมลิงก์
 
@@ -236,6 +238,7 @@ MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
 
 - เมนูนี้สร้าง trigger เพียงครั้งเดียว ถ้ามีอยู่แล้วจะไม่สร้างซ้ำ
 - Trigger จะสแกนไฟล์และเติมลิงก์ แต่ไม่ได้ย้ายโฟลเดอร์เดิมเข้าเทอมทุกครั้ง
+- Trigger จะไม่แชร์โฟลเดอร์ให้อาจารย์เมื่อ `AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS` เป็น `false`
 - ถ้ามีการเพิ่มรายวิชาใหม่ trigger จะสร้างโฟลเดอร์ให้เองเมื่อ `AUTO_CREATE_COURSE_FOLDERS` เป็น `true`
 
 ## ต้องตั้งชื่อไฟล์เฉพาะไหม

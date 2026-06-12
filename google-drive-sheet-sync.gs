@@ -21,7 +21,7 @@ const DRIVE_SYNC_CONFIG = {
 
   // Leave COURSE_ROOT_FOLDER_ID blank to let the script create one parent folder
   // automatically in My Drive. The created folder ID is saved in script properties.
-  COURSE_ROOT_FOLDER_ID: '',
+  COURSE_ROOT_FOLDER_ID: '1UbOEAgTVa20w8-LJAOD1pFL9HtZjxpaf',
   COURSE_ROOT_FOLDER_NAME: 'Course Review Uploads',
   AUTO_CREATE_COURSE_FOLDERS: true,
   GROUP_COURSE_FOLDERS_BY_TERM: true,
@@ -36,7 +36,7 @@ const DRIVE_SYNC_CONFIG = {
   // Set false if your school controls sharing through Google groups or domains.
   MAKE_FILES_VIEWABLE_BY_LINK: true,
   MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
-  AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS: true,
+  AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS: false,
 
   COURSE_CODE_HEADERS: ['รหัสวิชา', 'รหัส', 'Course Code', 'course_code'],
   COURSE_NAME_HEADERS: ['ชื่อรายวิชา', 'รายวิชา', 'Course Name', 'course_name'],
@@ -528,16 +528,24 @@ function shareFolderWithInstructors_(folder, row, columns, sheet, rowNumber) {
   const emails = extractEmails_(row[columns.instructorEmail - 1]);
   if (emails.length === 0) return [];
 
+  const existingEditorEmails = new Set(
+    folder.getEditors().map(user => user.getEmail().toLowerCase())
+  );
+  const newlySharedEmails = [];
+
   emails.forEach(email => {
+    if (existingEditorEmails.has(email)) return;
+
     try {
       folder.addEditor(email);
+      newlySharedEmails.push(email);
     } catch (error) {
       Logger.log(`Cannot add editor ${email} on row ${rowNumber}: ${error}`);
     }
   });
 
   sheet.getRange(rowNumber, columns.folderSharedWith).setValue(emails.join(', '));
-  return emails;
+  return newlySharedEmails;
 }
 
 function extractEmails_(value) {
