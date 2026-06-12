@@ -2,8 +2,10 @@
  * Google Drive -> Google Sheet sync for the course review dashboard.
  *
  * How it matches files:
- * 1. Best option: add a "Drive Folder ID" column to the sheet. Each row can point
- *    to the Drive folder for that course. The latest file in that folder is used.
+ * 1. Easiest option: run "สร้างโฟลเดอร์รายวิชา" from the Drive Sync menu.
+ *    The script creates folders by term, then one folder per course row, and
+ *    writes its Drive Folder ID back to the sheet. The latest file in that
+ *    course folder is used.
  * 2. Fallback: put one or more parent folder IDs in ROOT_FOLDER_IDS below. The
  *    script searches those folders recursively and matches files whose names
  *    contain the course code from the "รหัสวิชา" column.
@@ -17,6 +19,13 @@ const DRIVE_SYNC_CONFIG = {
   SHEET_NAME: '', // Leave blank to use the active sheet.
   HEADER_ROW: 1,
 
+  // Leave COURSE_ROOT_FOLDER_ID blank to let the script create one parent folder
+  // automatically in My Drive. The created folder ID is saved in script properties.
+  COURSE_ROOT_FOLDER_ID: '',
+  COURSE_ROOT_FOLDER_NAME: 'Course Review Uploads',
+  AUTO_CREATE_COURSE_FOLDERS: true,
+  GROUP_COURSE_FOLDERS_BY_TERM: true,
+
   // Optional fallback parent folders. Paste folder IDs here if you do not add
   // a Drive Folder ID per course row.
   ROOT_FOLDER_IDS: [
@@ -26,11 +35,17 @@ const DRIVE_SYNC_CONFIG = {
   // If true, files found by the script are changed to "anyone with the link can view".
   // Keep false if your school controls sharing through Google groups or domains.
   MAKE_FILES_VIEWABLE_BY_LINK: false,
+  MAKE_FOLDERS_VIEWABLE_BY_LINK: false,
 
   COURSE_CODE_HEADERS: ['รหัสวิชา', 'รหัส', 'Course Code', 'course_code'],
+  COURSE_NAME_HEADERS: ['ชื่อรายวิชา', 'รายวิชา', 'Course Name', 'course_name'],
+  TERM_HEADERS: ['ภาคการศึกษา', 'เทอม', 'Term'],
+  ACADEMIC_YEAR_HEADERS: ['ปีการศึกษา', 'Academic Year', 'year'],
   FILE_LINK_HEADERS: ['ลิงก์ไฟล์', 'Link', 'ลิงค์ไฟล์ มคอ.'],
   UPLOAD_HEADERS: ['อัพไฟล์', 'อัปโหลดไฟล์', 'Uploaded'],
   FOLDER_ID_HEADERS: ['Drive Folder ID', 'Folder ID', 'รหัสโฟลเดอร์ Drive', 'โฟลเดอร์ไฟล์'],
+  FOLDER_LINK_HEADERS: ['ลิงก์โฟลเดอร์อัปโหลด', 'Drive Folder Link', 'Folder Link'],
+  TERM_FOLDER_LINK_HEADERS: ['ลิงก์โฟลเดอร์เทอม', 'Term Folder Link'],
   FILE_ID_HEADERS: ['Google Drive File ID', 'File ID'],
   FILE_NAME_HEADERS: ['ชื่อไฟล์ล่าสุด', 'File Name'],
   FOUND_AT_HEADERS: ['วันที่พบไฟล์', 'Found At']
@@ -39,9 +54,27 @@ const DRIVE_SYNC_CONFIG = {
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Drive Sync')
+    .addItem('สร้างโฟลเดอร์รายวิชา', 'createCourseFoldersFromSheet')
+    .addItem('จัดโฟลเดอร์เดิมเข้าเทอม', 'organizeExistingCourseFoldersByTerm')
     .addItem('สแกนไฟล์และเติมลิงก์', 'syncDriveLinksToSheet')
+    .addItem('สร้างโฟลเดอร์และสแกนไฟล์', 'createFoldersAndSyncDriveLinks')
     .addItem('สร้าง Trigger ทุก 5 นาที', 'createDriveSyncTrigger')
     .addToUi();
+}
+
+function createFoldersAndSyncDriveLinks() {
+  createCourseFoldersFromSheet();
+  syncDriveLinksToSheet();
+}
+
+function createCourseFoldersFromSheet() {
+  const result = ensureCourseFolders_(true);
+  notify_(`สร้าง/ตรวจโฟลเดอร์แล้ว ${result.createdCount} ใหม่, ${result.existingCount} มีอยู่แล้ว`);
+}
+
+function organizeExistingCourseFoldersByTerm() {
+  const result = moveExistingCourseFoldersToTermFolders_();
+  notify_(`จัดโฟลเดอร์เข้าเทอมแล้ว ${result.movedCount} รายวิชา, ข้าม ${result.skippedCount} รายวิชา`);
 }
 
 function syncDriveLinksToSheet() {
@@ -55,6 +88,10 @@ function syncDriveLinksToSheet() {
   }
 
   const columns = getOrCreateColumns_(sheet);
+  if (DRIVE_SYNC_CONFIG.AUTO_CREATE_COURSE_FOLDERS) {
+    ensureCourseFolders_(false, sheet, columns);
+  }
+
   const lastColumn = sheet.getLastColumn();
   const values = sheet.getRange(headerRow + 1, 1, lastRow - headerRow, lastColumn).getValues();
   const rootFilesByCourseCode = buildRootFileIndex_();
@@ -127,7 +164,12 @@ function getOrCreateColumns_(sheet) {
 
   return {
     courseCode,
-    folderId: findColumn_(headers, DRIVE_SYNC_CONFIG.FOLDER_ID_HEADERS),
+    courseName: findColumn_(headers, DRIVE_SYNC_CONFIG.COURSE_NAME_HEADERS),
+    term: findColumn_(headers, DRIVE_SYNC_CONFIG.TERM_HEADERS),
+    academicYear: findColumn_(headers, DRIVE_SYNC_CONFIG.ACADEMIC_YEAR_HEADERS),
+    folderId: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FOLDER_ID_HEADERS[0]),
+    folderLink: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FOLDER_LINK_HEADERS[0]),
+    termFolderLink: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.TERM_FOLDER_LINK_HEADERS[0]),
     fileLink: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FILE_LINK_HEADERS[0]),
     upload: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.UPLOAD_HEADERS[0]),
     fileId: findOrCreateColumn_(sheet, headers, DRIVE_SYNC_CONFIG.FILE_ID_HEADERS[0]),
@@ -154,6 +196,169 @@ function findOrCreateColumn_(sheet, headers, headerName) {
   sheet.getRange(DRIVE_SYNC_CONFIG.HEADER_ROW, column).setValue(headerName);
   headers.push(headerName);
   return column;
+}
+
+function ensureCourseFolders_(forceCreate, providedSheet, providedColumns) {
+  const sheet = providedSheet || getTargetSheet_();
+  const columns = providedColumns || getOrCreateColumns_(sheet);
+  const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastRow <= headerRow) {
+    return { createdCount: 0, existingCount: 0 };
+  }
+
+  const rootFolder = getOrCreateCourseRootFolder_();
+  const values = sheet.getRange(headerRow + 1, 1, lastRow - headerRow, lastColumn).getValues();
+  let createdCount = 0;
+  let existingCount = 0;
+
+  values.forEach((row, rowIndex) => {
+    const rowNumber = headerRow + 1 + rowIndex;
+    const courseCode = normalizeCourseCode_(row[columns.courseCode - 1]);
+    if (!courseCode) return;
+
+    const existingFolderId = extractDriveId_(row[columns.folderId - 1]);
+    if (existingFolderId) {
+      try {
+        const folder = DriveApp.getFolderById(existingFolderId);
+        const termFolder = getCourseParentFolder_(rootFolder, row, columns);
+        sheet.getRange(rowNumber, columns.folderLink).setValue(folder.getUrl());
+        sheet.getRange(rowNumber, columns.termFolderLink).setValue(termFolder.getUrl());
+        existingCount += 1;
+        return;
+      } catch (error) {
+        Logger.log(`Invalid folder ID on row ${rowNumber}: ${existingFolderId}`);
+      }
+    }
+
+    if (!forceCreate && !DRIVE_SYNC_CONFIG.AUTO_CREATE_COURSE_FOLDERS) return;
+
+    const termFolder = getCourseParentFolder_(rootFolder, row, columns);
+    const folderName = buildCourseFolderName_(row, columns);
+    const folderResult = getOrCreateChildFolder_(termFolder, folderName);
+    const folder = folderResult.folder;
+
+    if (DRIVE_SYNC_CONFIG.MAKE_FOLDERS_VIEWABLE_BY_LINK) {
+      folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    }
+
+    sheet.getRange(rowNumber, columns.folderId).setValue(folder.getId());
+    sheet.getRange(rowNumber, columns.folderLink).setValue(folder.getUrl());
+    sheet.getRange(rowNumber, columns.termFolderLink).setValue(termFolder.getUrl());
+    if (folderResult.created) {
+      createdCount += 1;
+    } else {
+      existingCount += 1;
+    }
+  });
+
+  return { createdCount, existingCount };
+}
+
+function moveExistingCourseFoldersToTermFolders_() {
+  const sheet = getTargetSheet_();
+  const columns = getOrCreateColumns_(sheet);
+  const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
+  const lastRow = sheet.getLastRow();
+  const lastColumn = sheet.getLastColumn();
+
+  if (lastRow <= headerRow) {
+    return { movedCount: 0, skippedCount: 0 };
+  }
+
+  const rootFolder = getOrCreateCourseRootFolder_();
+  const values = sheet.getRange(headerRow + 1, 1, lastRow - headerRow, lastColumn).getValues();
+  let movedCount = 0;
+  let skippedCount = 0;
+
+  values.forEach((row, rowIndex) => {
+    const rowNumber = headerRow + 1 + rowIndex;
+    const courseCode = normalizeCourseCode_(row[columns.courseCode - 1]);
+    const folderId = extractDriveId_(row[columns.folderId - 1]);
+    if (!courseCode || !folderId) {
+      skippedCount += 1;
+      return;
+    }
+
+    try {
+      const folder = DriveApp.getFolderById(folderId);
+      const termFolder = getCourseParentFolder_(rootFolder, row, columns);
+      folder.moveTo(termFolder);
+      sheet.getRange(rowNumber, columns.folderLink).setValue(folder.getUrl());
+      sheet.getRange(rowNumber, columns.termFolderLink).setValue(termFolder.getUrl());
+      movedCount += 1;
+    } catch (error) {
+      Logger.log(`Cannot move folder on row ${rowNumber}: ${error}`);
+      skippedCount += 1;
+    }
+  });
+
+  return { movedCount, skippedCount };
+}
+
+function getOrCreateCourseRootFolder_() {
+  const configuredFolderId = extractDriveId_(DRIVE_SYNC_CONFIG.COURSE_ROOT_FOLDER_ID);
+  if (configuredFolderId) {
+    return DriveApp.getFolderById(configuredFolderId);
+  }
+
+  const properties = PropertiesService.getDocumentProperties();
+  const savedFolderId = properties.getProperty('DRIVE_SYNC_ROOT_FOLDER_ID');
+  if (savedFolderId) {
+    try {
+      return DriveApp.getFolderById(savedFolderId);
+    } catch (error) {
+      Logger.log(`Saved root folder ID is invalid: ${savedFolderId}`);
+    }
+  }
+
+  const folder = DriveApp.createFolder(DRIVE_SYNC_CONFIG.COURSE_ROOT_FOLDER_NAME);
+  properties.setProperty('DRIVE_SYNC_ROOT_FOLDER_ID', folder.getId());
+  return folder;
+}
+
+function getCourseParentFolder_(rootFolder, row, columns) {
+  if (!DRIVE_SYNC_CONFIG.GROUP_COURSE_FOLDERS_BY_TERM) {
+    return rootFolder;
+  }
+
+  const termFolderName = buildTermFolderName_(row, columns);
+  return getOrCreateChildFolder_(rootFolder, termFolderName).folder;
+}
+
+function getOrCreateChildFolder_(parentFolder, folderName) {
+  const existingFolders = parentFolder.getFoldersByName(folderName);
+  if (existingFolders.hasNext()) {
+    return { folder: existingFolders.next(), created: false };
+  }
+  return { folder: parentFolder.createFolder(folderName), created: true };
+}
+
+function buildCourseFolderName_(row, columns) {
+  const courseCode = normalizeCourseCode_(row[columns.courseCode - 1]);
+  const courseName = columns.courseName ? String(row[columns.courseName - 1] || '').trim() : '';
+  const termYear = DRIVE_SYNC_CONFIG.GROUP_COURSE_FOLDERS_BY_TERM ? '' : buildTermFolderName_(row, columns);
+  const parts = [termYear, courseCode, courseName].filter(Boolean);
+  return sanitizeFolderName_(parts.join('_')).slice(0, 180);
+}
+
+function buildTermFolderName_(row, columns) {
+  const term = columns.term ? String(row[columns.term - 1] || '').trim() : '';
+  const academicYear = columns.academicYear ? String(row[columns.academicYear - 1] || '').trim() : '';
+
+  if (academicYear && term) return sanitizeFolderName_(`${academicYear}_T${term}`);
+  if (academicYear) return sanitizeFolderName_(`${academicYear}_ไม่ระบุเทอม`);
+  if (term) return sanitizeFolderName_(`ไม่ระบุปี_T${term}`);
+  return 'ไม่ระบุเทอม';
+}
+
+function sanitizeFolderName_(name) {
+  return String(name || '')
+    .replace(/[\\/:*?"<>|#{}%~&]/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function buildRootFileIndex_() {
