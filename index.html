@@ -92,7 +92,7 @@
     </header>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
                 <i data-lucide="book-open" class="w-7 h-7"></i>
@@ -142,6 +142,15 @@
             <div>
                 <p class="text-base text-slate-500 font-medium">รอดำเนินการ (มคอ.3-4)</p>
                 <p class="text-4xl font-semibold text-rose-600 mt-1" id="kpi-pending">0</p>
+            </div>
+        </div>
+        <div class="card p-6 flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                <i data-lucide="clock" class="w-7 h-7"></i>
+            </div>
+            <div>
+                <p class="text-base text-slate-500 font-medium">รอดำเนินการ (มคอ.5-6)</p>
+                <p class="text-4xl font-semibold text-amber-600 mt-1" id="kpi-pending56">0</p>
             </div>
         </div>
     </div>
@@ -452,6 +461,7 @@
             const uploaded = data.filter(d => d.upload).length;
             const uploaded56 = data.filter(d => d.upload56).length;
             const pending = total - uploaded;
+            const pending56 = total - uploaded56;
             const uploadPercent = total > 0 ? Math.round((uploaded / total) * 100) : 0;
             const upload56Percent = total > 0 ? Math.round((uploaded56 / total) * 100) : 0;
             const uniqueInstructors = new Set(data.map(d => d.instructor).filter(i => i && i !== '-')).size;
@@ -463,6 +473,7 @@
             document.getElementById('kpi-uploaded56').innerText = uploaded56;
             document.getElementById('kpi-uploaded56-percent').innerText = `(${upload56Percent}%)`;
             document.getElementById('kpi-pending').innerText = pending;
+            document.getElementById('kpi-pending56').innerText = pending56;
 
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
