@@ -48,7 +48,7 @@
         /* สไตล์กำหนดสำหรับความกว้างขั้นต่ำของตารางบนหน้าจอเล็กเพื่อให้ปัดดูได้ไม่บีบตัว */
         @media (max-width: 1024px) {
             .responsive-table {
-                min-width: 900px;
+                min-width: 1150px;
             }
         }
     </style>
@@ -92,7 +92,7 @@
     </header>
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div class="card p-6 flex items-center gap-4">
             <div class="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0">
                 <i data-lucide="book-open" class="w-7 h-7"></i>
@@ -116,10 +116,22 @@
                 <i data-lucide="check-circle" class="w-7 h-7"></i>
             </div>
             <div>
-                <p class="text-base text-slate-500 font-medium">อัปโหลด มคอ. แล้ว</p>
+                <p class="text-base text-slate-500 font-medium">อัปโหลด มคอ.3-4 แล้ว</p>
                 <div class="flex items-baseline gap-2 mt-1">
                     <p class="text-4xl font-semibold text-emerald-600" id="kpi-uploaded">0</p>
                     <p class="text-xl font-medium text-emerald-500" id="kpi-uploaded-percent">(0%)</p>
+                </div>
+            </div>
+        </div>
+        <div class="card p-6 flex items-center gap-4">
+            <div class="w-14 h-14 rounded-full bg-teal-50 flex items-center justify-center text-teal-600 shrink-0">
+                <i data-lucide="file-check" class="w-7 h-7"></i>
+            </div>
+            <div>
+                <p class="text-base text-slate-500 font-medium">อัปโหลด มคอ.5-6 แล้ว</p>
+                <div class="flex items-baseline gap-2 mt-1">
+                    <p class="text-4xl font-semibold text-teal-600" id="kpi-uploaded56">0</p>
+                    <p class="text-xl font-medium text-teal-500" id="kpi-uploaded56-percent">(0%)</p>
                 </div>
             </div>
         </div>
@@ -128,14 +140,14 @@
                 <i data-lucide="clock" class="w-7 h-7"></i>
             </div>
             <div>
-                <p class="text-base text-slate-500 font-medium">รอดำเนินการ</p>
+                <p class="text-base text-slate-500 font-medium">รอดำเนินการ (มคอ.3-4)</p>
                 <p class="text-4xl font-semibold text-rose-600 mt-1" id="kpi-pending">0</p>
             </div>
         </div>
     </div>
 
     <!-- Charts Section -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <!-- 1. กราฟโดนัทชาร์ต สำหรับการลงเวลา -->
         <div class="card p-6">
             <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4 text-center">สถานะการลงเวลา</h2>
@@ -150,11 +162,18 @@
                 <canvas id="presentChart"></canvas>
             </div>
         </div>
-        <!-- 3. กราฟโดนัทชาร์ต สถานะอัปโหลดแผนฯ -->
+        <!-- 3. กราฟโดนัทชาร์ต อัปโหลด มคอ.3-4 -->
         <div class="card p-6">
-            <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4 text-center">สถานะอัปโหลดแผนฯ</h2>
+            <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4 text-center">อัปโหลด มคอ.3-4</h2>
             <div class="relative h-64 w-full flex items-center justify-center">
                 <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+        <!-- 4. กราฟโดนัทชาร์ต อัปโหลด มคอ.5-6 -->
+        <div class="card p-6">
+            <h2 class="text-lg md:text-xl font-medium text-slate-800 mb-4 text-center">อัปโหลด มคอ.5-6</h2>
+            <div class="relative h-64 w-full flex items-center justify-center">
+                <canvas id="upload56Chart"></canvas>
             </div>
         </div>
     </div>
@@ -208,7 +227,8 @@
                         <th class="px-6 py-4 w-44">ผู้รับผิดชอบ</th>
                         <th class="px-6 py-4 w-32">ลงเวลาวิพากษ์</th>
                         <th class="px-6 py-4 w-32">สถานะการนำเสนอ</th>
-                        <th class="px-6 py-4 w-36">อัปโหลด มคอ.</th>
+                        <th class="px-6 py-4 w-36">อัปโหลด มคอ.3-4</th>
+                        <th class="px-6 py-4 w-36">อัปโหลด มคอ.5-6</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
@@ -306,6 +326,10 @@
                     const uploadStr = (row['อัพไฟล์'] || '').toString().trim().toUpperCase();
                     const upload = uploadStr === 'TRUE' || fileLink !== '';
 
+                    const fileLink56 = (row['ลิงค์ไฟล์ มคอ. 5-6'] || '').toString().trim();
+                    const uploadStr56 = (row['อัพไฟล์ 5-6'] || '').toString().trim().toUpperCase();
+                    const upload56 = uploadStr56 === 'TRUE' || fileLink56 !== '';
+
                     // ** ปรับปรุงการดึงข้อมูลและตรวจจับคำของ "หมวดวิชาชีพ" โดยคัดแยก "พื้นฐานวิชาชีพ" ออก **
                     const proRaw = row['หมวดวิชาชีพ'] || row['วิชาชีพ'] || row['หมวดวิชา'] || row['หมวด'] || row['ประเภทวิชา'] || row['กลุ่มวิชา'] || '';
                     const proStr = proRaw.toString().trim().toUpperCase();
@@ -321,7 +345,7 @@
                                   proStr === 'Y' || 
                                   proStr === '1';
 
-                    return { id, name, year, instructor, upload, booking, presented, termYear, fileLink, isPro, rawCategory: proRaw.toString().trim() };
+                    return { id, name, year, instructor, upload, upload56, booking, presented, termYear, fileLink, fileLink56, isPro, rawCategory: proRaw.toString().trim() };
                 }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                 
                 document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
@@ -426,21 +450,25 @@
         function updateDashboard(data) {
             const total = data.length;
             const uploaded = data.filter(d => d.upload).length;
+            const uploaded56 = data.filter(d => d.upload56).length;
             const pending = total - uploaded;
             const uploadPercent = total > 0 ? Math.round((uploaded / total) * 100) : 0;
+            const upload56Percent = total > 0 ? Math.round((uploaded56 / total) * 100) : 0;
             const uniqueInstructors = new Set(data.map(d => d.instructor).filter(i => i && i !== '-')).size;
 
             document.getElementById('kpi-total').innerText = total;
             document.getElementById('kpi-instructors').innerText = uniqueInstructors;
             document.getElementById('kpi-uploaded').innerText = uploaded;
             document.getElementById('kpi-uploaded-percent').innerText = `(${uploadPercent}%)`;
+            document.getElementById('kpi-uploaded56').innerText = uploaded56;
+            document.getElementById('kpi-uploaded56-percent').innerText = `(${upload56Percent}%)`;
             document.getElementById('kpi-pending').innerText = pending;
 
             const tableBody = document.getElementById('tableBody');
             tableBody.innerHTML = '';
             
             if(data.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-slate-500">ไม่พบข้อมูล กรุณาเลือกเทอมการศึกษา</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="10" class="px-6 py-8 text-center text-slate-500">ไม่พบข้อมูล กรุณาเลือกเทอมการศึกษา</td></tr>`;
             }
 
             data.forEach(item => {
@@ -460,6 +488,22 @@
                     uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>รอดำเนินการ</span>`;
                 }
                 
+                // สร้าง badge สำหรับ อัปโหลด มคอ.5-6
+                let uploadContent56 = '';
+                if (item.upload56) {
+                    if (item.fileLink56 && item.fileLink56 !== '') {
+                        uploadContent56 = `<a href="${item.fileLink56}" target="_blank" class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition shrink-0 whitespace-nowrap">
+                            <span class="w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>
+                            <span>สำเร็จ</span>
+                            <i data-lucide="external-link" class="w-3.5 h-3.5 ml-1 text-teal-600 shrink-0"></i>
+                        </a>`;
+                    } else {
+                        uploadContent56 = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>สำเร็จ</span>`;
+                    }
+                } else {
+                    uploadContent56 = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>รอดำเนินการ</span>`;
+                }
+
                 const bookingBadge = item.booking 
                     ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>ลงเวลาแล้ว</span>`
                     : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>ยังไม่ลงเวลา</span>`;
@@ -503,6 +547,7 @@
                         <td class="px-6 py-4 whitespace-nowrap">${bookingBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${presentBadge}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${uploadContent}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${uploadContent56}</td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML('beforeend', row);
@@ -518,10 +563,12 @@
         let bookingChartInstance = null;
         let presentChartInstance = null;
         let statusChartInstance = null;
+        let upload56ChartInstance = null;
         let yearChartInstance = null;
 
         const colors = {
             emerald: '#10b981',
+            teal: '#14b8a6',
             rose: '#f43f5e',
             blue: '#3b82f6',
             purple: '#8b5cf6',
@@ -600,7 +647,7 @@
                 }
             });
 
-            // --- 3. Doughnut Chart: Upload Status ---
+            // --- 3. Doughnut Chart: Upload มคอ.3-4 Status ---
             const uploaded = data.filter(d => d.upload).length;
             const pendingUpload = data.length - uploaded;
 
@@ -609,7 +656,7 @@
             statusChartInstance = new Chart(ctxStatus, {
                 type: 'doughnut',
                 data: {
-                    labels: ['อัปโหลดแล้ว', 'ยังไม่อัปโหลด'],
+                    labels: ['อัปโหลด มคอ.3-4 แล้ว', 'ยังไม่อัปโหลด'],
                     datasets: [{
                         data: [uploaded, pendingUpload],
                         backgroundColor: [colors.emerald, colors.rose],
@@ -629,7 +676,36 @@
                 }
             });
 
-            // --- 4. Bar Chart: By Year (Grouped and Stacked showing all 3 steps) ---
+            // --- 4. Doughnut Chart: Upload มคอ.5-6 Status ---
+            const uploaded56 = data.filter(d => d.upload56).length;
+            const pendingUpload56 = data.length - uploaded56;
+
+            if (upload56ChartInstance) upload56ChartInstance.destroy();
+            const ctxUpload56 = document.getElementById('upload56Chart').getContext('2d');
+            upload56ChartInstance = new Chart(ctxUpload56, {
+                type: 'doughnut',
+                data: {
+                    labels: ['อัปโหลด มคอ.5-6 แล้ว', 'ยังไม่อัปโหลด'],
+                    datasets: [{
+                        data: [uploaded56, pendingUpload56],
+                        backgroundColor: [colors.teal, colors.slate200],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '55%', 
+                    plugins: {
+                        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20, font: { size: 14 } } },
+                        tooltip: { backgroundColor: colors.slate800, padding: 12, cornerRadius: 8, titleFont: { size: 14 }, bodyFont: { size: 14 } },
+                        datalabels: { color: '#ffffff', font: { weight: 'bold', size: 16 }, formatter: percentageFormatter }
+                    }
+                }
+            });
+
+            // --- 5. Bar Chart: By Year (Grouped and Stacked showing all steps) ---
             const years = [1, 2, 3, 4];
             
             const bookedByYear = years.map(y => data.filter(d => d.year === y && d.booking).length);
@@ -640,6 +716,9 @@
             
             const uploadedByYear = years.map(y => data.filter(d => d.year === y && d.upload).length);
             const pendingUploadedByYear = years.map(y => data.filter(d => d.year === y && !d.upload).length);
+
+            const uploaded56ByYear = years.map(y => data.filter(d => d.year === y && d.upload56).length);
+            const pendingUploaded56ByYear = years.map(y => data.filter(d => d.year === y && !d.upload56).length);
 
             if (yearChartInstance) yearChartInstance.destroy();
             const ctxYear = document.getElementById('yearChart').getContext('2d');
@@ -654,8 +733,11 @@
                         { label: 'นำเสนอแล้ว', data: presentedByYear, backgroundColor: colors.purple, stack: 'present', borderRadius: 4 },
                         { label: 'ยังไม่นำเสนอ', data: pendingPresentedByYear, backgroundColor: colors.slate200, stack: 'present', borderRadius: 4 },
                         
-                        { label: 'อัปโหลด มคอ. แล้ว', data: uploadedByYear, backgroundColor: colors.emerald, stack: 'upload', borderRadius: 4 },
-                        { label: 'รออัปโหลด มคอ.', data: pendingUploadedByYear, backgroundColor: colors.slate200, stack: 'upload', borderRadius: 4 }
+                        { label: 'อัปโหลด มคอ.3-4 แล้ว', data: uploadedByYear, backgroundColor: colors.emerald, stack: 'upload34', borderRadius: 4 },
+                        { label: 'รออัปโหลด มคอ.3-4', data: pendingUploadedByYear, backgroundColor: colors.slate200, stack: 'upload34', borderRadius: 4 },
+                        
+                        { label: 'อัปโหลด มคอ.5-6 แล้ว', data: uploaded56ByYear, backgroundColor: colors.teal, stack: 'upload56', borderRadius: 4 },
+                        { label: 'รออัปโหลด มคอ.5-6', data: pendingUploaded56ByYear, backgroundColor: colors.slate200, stack: 'upload56', borderRadius: 4 }
                     ]
                 },
                 options: {
