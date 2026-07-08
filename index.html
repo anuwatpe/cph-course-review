@@ -62,6 +62,10 @@
             </h1>
             <h2 class="text-base md:text-lg text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
             <p class="text-slate-500 text-sm md:text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
+            <div class="flex items-center gap-2 mt-2">
+                <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full font-mono font-semibold" id="versionBadge"></span>
+                <span class="text-xs text-slate-400" id="releaseDateLabel"></span>
+            </div>
         </div>
         
         <!-- ตัวกรอง และ ปุ่ม Action -->
@@ -283,11 +287,17 @@
     <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
         <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา. All rights reserved.</p>
-        <p class="mt-1.5">Created by <span class="font-medium text-slate-700">Anuwat Pengput</span></p>
+        <p class="mt-1.5">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span> &middot; <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded" id="footerVersion"></span></p>
     </footer>
 
     <script>
+        const APP_VERSION = 'v1.0.0';
+        const APP_RELEASE_DATE = '8 กรกฎาคม 2569';
+
         document.getElementById('currentYear').innerText = new Date().getFullYear();
+        document.getElementById('versionBadge').innerText = APP_VERSION;
+        document.getElementById('releaseDateLabel').innerText = `Released — ${APP_RELEASE_DATE}`;
+        document.getElementById('footerVersion').innerText = APP_VERSION;
         lucide.createIcons();
         Chart.register(ChartDataLabels);
 
