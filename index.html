@@ -45,12 +45,10 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* สไตล์กำหนดสำหรับความกว้างขั้นต่ำของตารางบนหน้าจอเล็กเพื่อให้ปัดดูได้ไม่บีบตัว */
-        @media (max-width: 1024px) {
-            .responsive-table {
-                min-width: 1150px;
-            }
-        }
+        /* Filter Pill Styles */
+        .filter-pill { background-color: white; color: #64748b; cursor: pointer; }
+        .filter-pill.active-pill { background-color: #2563eb; color: white; }
+        .filter-pill:hover:not(.active-pill) { background-color: #f8fafc; color: #334155; }
     </style>
 </head>
 <body class="text-slate-800 antialiased font-sans p-4 md:p-8">
@@ -214,6 +212,34 @@
             </div>
         </div>
 
+        <!-- Filter Bar -->
+        <div class="px-6 py-3 border-b border-slate-100 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <span class="text-sm font-medium text-slate-500 shrink-0 flex items-center gap-1.5">
+                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                กรองสถานะ:
+            </span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400 font-medium shrink-0">มคอ.3-4</span>
+                <div class="flex rounded-lg overflow-hidden border border-slate-200 text-sm">
+                    <button data-filter="upload34" data-value="all" class="filter-pill active-pill px-3 py-1.5 font-medium transition-colors">ทั้งหมด</button>
+                    <button data-filter="upload34" data-value="uploaded" class="filter-pill px-3 py-1.5 font-medium transition-colors border-l border-slate-200">อัปโหลดแล้ว</button>
+                    <button data-filter="upload34" data-value="pending" class="filter-pill px-3 py-1.5 font-medium transition-colors border-l border-slate-200">รอดำเนินการ</button>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-slate-400 font-medium shrink-0">มคอ.5-6</span>
+                <div class="flex rounded-lg overflow-hidden border border-slate-200 text-sm">
+                    <button data-filter="upload56" data-value="all" class="filter-pill active-pill px-3 py-1.5 font-medium transition-colors">ทั้งหมด</button>
+                    <button data-filter="upload56" data-value="uploaded" class="filter-pill px-3 py-1.5 font-medium transition-colors border-l border-slate-200">อัปโหลดแล้ว</button>
+                    <button data-filter="upload56" data-value="pending" class="filter-pill px-3 py-1.5 font-medium transition-colors border-l border-slate-200">รอดำเนินการ</button>
+                </div>
+            </div>
+            <button id="clearFiltersBtn" class="hidden text-xs text-rose-500 hover:text-rose-700 flex items-center gap-1 transition-colors ml-auto">
+                <i data-lucide="x-circle" class="w-3.5 h-3.5"></i>
+                ล้างตัวกรอง
+            </button>
+        </div>
+
         <!-- กล่องข้อมูลระเบียบเกรด C ขึ้นไปสำหรับหมวดวิชาชีพ -->
         <div class="px-6 py-2">
             <div class="flex items-start md:items-center gap-3 text-sm md:text-base text-amber-800 bg-amber-50 border border-amber-200 p-4 rounded-xl shadow-sm">
@@ -226,18 +252,18 @@
 
         <div class="overflow-x-auto no-scrollbar w-full max-w-full">
             <table class="w-full text-left text-base text-slate-600 responsive-table">
-                <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100 whitespace-nowrap">
+                <thead class="bg-slate-50 text-slate-500 font-medium border-b border-slate-100 whitespace-nowrap text-sm">
                     <tr>
-                        <th class="px-6 py-4 w-28">เทอม/ปี</th>
-                        <th class="px-6 py-4 w-28">รหัสวิชา</th>
-                        <th class="px-6 py-4">ชื่อรายวิชา</th>
-                        <th class="px-6 py-4 w-24">ชั้นปี</th>
-                        <th class="px-6 py-4 w-44">หมวดวิชา</th>
-                        <th class="px-6 py-4 w-44">ผู้รับผิดชอบ</th>
-                        <th class="px-6 py-4 w-32">ลงเวลาวิพากษ์</th>
-                        <th class="px-6 py-4 w-32">สถานะการนำเสนอ</th>
-                        <th class="px-6 py-4 w-36">อัปโหลด มคอ.3-4</th>
-                        <th class="px-6 py-4 w-36">อัปโหลด มคอ.5-6</th>
+                        <th class="px-4 py-3 w-24">เทอม/ปี</th>
+                        <th class="px-4 py-3 w-24">รหัสวิชา</th>
+                        <th class="px-4 py-3">ชื่อรายวิชา</th>
+                        <th class="px-4 py-3 w-12 text-center" title="ชั้นปี">ปี</th>
+                        <th class="px-4 py-3 w-36">หมวดวิชา</th>
+                        <th class="px-4 py-3 w-36">ผู้รับผิดชอบ</th>
+                        <th class="px-4 py-3 w-16 text-center" title="สถานะการลงเวลาวิพากษ์">ลงเวลา</th>
+                        <th class="px-4 py-3 w-16 text-center" title="สถานะการนำเสนอ">นำเสนอ</th>
+                        <th class="px-4 py-3 w-16 text-center">มคอ.3-4</th>
+                        <th class="px-4 py-3 w-16 text-center">มคอ.5-6</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody" class="divide-y divide-slate-100">
@@ -268,6 +294,8 @@
         let globalData = [];
         let activeTerms = [];
         let allAvailableTerms = [];
+        let activeUpload34Filter = 'all';
+        let activeUpload56Filter = 'all';
 
         const multiSelectBtn = document.getElementById('multiSelectBtn');
         const multiSelectDropdown = document.getElementById('multiSelectDropdown');
@@ -282,6 +310,32 @@
             if (!multiSelectContainer.contains(e.target)) {
                 multiSelectDropdown.classList.add('hidden');
             }
+        });
+
+        // Filter pill click handler
+        document.addEventListener('click', (e) => {
+            const pill = e.target.closest('.filter-pill');
+            if (!pill) return;
+            const filterType = pill.dataset.filter;
+            const filterValue = pill.dataset.value;
+            document.querySelectorAll(`.filter-pill[data-filter="${filterType}"]`).forEach(p => p.classList.remove('active-pill'));
+            pill.classList.add('active-pill');
+            if (filterType === 'upload34') activeUpload34Filter = filterValue;
+            if (filterType === 'upload56') activeUpload56Filter = filterValue;
+            const hasActiveFilter = activeUpload34Filter !== 'all' || activeUpload56Filter !== 'all';
+            document.getElementById('clearFiltersBtn').classList.toggle('hidden', !hasActiveFilter);
+            applyFilters();
+        });
+
+        document.getElementById('clearFiltersBtn').addEventListener('click', () => {
+            activeUpload34Filter = 'all';
+            activeUpload56Filter = 'all';
+            ['upload34', 'upload56'].forEach(ft => {
+                document.querySelectorAll(`.filter-pill[data-filter="${ft}"]`).forEach(p => p.classList.remove('active-pill'));
+                document.querySelector(`.filter-pill[data-filter="${ft}"][data-value="all"]`).classList.add('active-pill');
+            });
+            document.getElementById('clearFiltersBtn').classList.add('hidden');
+            applyFilters();
         });
 
         async function loadData() {
@@ -449,7 +503,13 @@
                                     item.id.toLowerCase().includes(searchTerm) ||
                                     item.instructor.toLowerCase().includes(searchTerm);
                 const matchTerm = activeTerms.includes(item.termYear);
-                return matchSearch && matchTerm;
+                const matchUpload34 = activeUpload34Filter === 'all' ||
+                    (activeUpload34Filter === 'uploaded' && item.upload) ||
+                    (activeUpload34Filter === 'pending' && !item.upload);
+                const matchUpload56 = activeUpload56Filter === 'all' ||
+                    (activeUpload56Filter === 'uploaded' && item.upload56) ||
+                    (activeUpload56Filter === 'pending' && !item.upload56);
+                return matchSearch && matchTerm && matchUpload34 && matchUpload56;
             });
             updateDashboard(filteredData);
         }
@@ -486,42 +546,33 @@
                 let uploadContent = '';
                 if (item.upload) {
                     if (item.fileLink && item.fileLink !== '') {
-                        // ปรับขนาดและดีไซน์ปุ่มเป็น "สำเร็จ" พร้อมไอคอนลิงก์ภายนอก เพื่อไม่ให้ล้นจอในหน้าจอ 13 นิ้ว
-                        uploadContent = `<a href="${item.fileLink}" target="_blank" class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition shrink-0 whitespace-nowrap">
-                            <span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
-                            <span>สำเร็จ</span>
-                            <i data-lucide="external-link" class="w-3.5 h-3.5 ml-1 text-emerald-600 shrink-0"></i>
-                        </a>`;
+                        uploadContent = `<a href="${item.fileLink}" target="_blank" class="inline-flex w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 items-center justify-center hover:bg-emerald-200 transition" title="อัปโหลด มคอ.3-4 แล้ว — คลิกเพื่อดูไฟล์"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></a>`;
                     } else {
-                        uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>สำเร็จ</span>`;
+                        uploadContent = `<span class="inline-flex w-7 h-7 rounded-full bg-emerald-100 text-emerald-600 items-center justify-center" title="อัปโหลด มคอ.3-4 แล้ว"><i data-lucide="check" class="w-4 h-4"></i></span>`;
                     }
                 } else {
-                    uploadContent = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>รอดำเนินการ</span>`;
+                    uploadContent = `<span class="inline-flex w-7 h-7 rounded-full bg-slate-100 text-slate-400 items-center justify-center" title="ยังไม่อัปโหลด มคอ.3-4"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
                 }
                 
                 // สร้าง badge สำหรับ อัปโหลด มคอ.5-6
                 let uploadContent56 = '';
                 if (item.upload56) {
                     if (item.fileLink56 && item.fileLink56 !== '') {
-                        uploadContent56 = `<a href="${item.fileLink56}" target="_blank" class="inline-flex items-center gap-1 py-1 px-2.5 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 transition shrink-0 whitespace-nowrap">
-                            <span class="w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>
-                            <span>สำเร็จ</span>
-                            <i data-lucide="external-link" class="w-3.5 h-3.5 ml-1 text-teal-600 shrink-0"></i>
-                        </a>`;
+                        uploadContent56 = `<a href="${item.fileLink56}" target="_blank" class="inline-flex w-7 h-7 rounded-full bg-teal-100 text-teal-600 items-center justify-center hover:bg-teal-200 transition" title="อัปโหลด มคอ.5-6 แล้ว — คลิกเพื่อดูไฟล์"><i data-lucide="external-link" class="w-3.5 h-3.5"></i></a>`;
                     } else {
-                        uploadContent56 = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>สำเร็จ</span>`;
+                        uploadContent56 = `<span class="inline-flex w-7 h-7 rounded-full bg-teal-100 text-teal-600 items-center justify-center" title="อัปโหลด มคอ.5-6 แล้ว"><i data-lucide="check" class="w-4 h-4"></i></span>`;
                     }
                 } else {
-                    uploadContent56 = `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-rose-50 text-rose-700 border border-rose-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>รอดำเนินการ</span>`;
+                    uploadContent56 = `<span class="inline-flex w-7 h-7 rounded-full bg-slate-100 text-slate-400 items-center justify-center" title="ยังไม่อัปโหลด มคอ.5-6"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
                 }
 
-                const bookingBadge = item.booking 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>ลงเวลาแล้ว</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-slate-400 shrink-0"></span>ยังไม่ลงเวลา</span>`;
+                const bookingBadge = item.booking
+                    ? `<span class="inline-flex w-7 h-7 rounded-full bg-blue-100 text-blue-600 items-center justify-center" title="ลงเวลาแล้ว"><i data-lucide="check" class="w-4 h-4"></i></span>`
+                    : `<span class="inline-flex w-7 h-7 rounded-full bg-slate-100 text-slate-400 items-center justify-center" title="ยังไม่ลงเวลา"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
 
-                const presentBadge = item.presented 
-                    ? `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-purple-50 text-purple-700 border border-purple-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-purple-500 shrink-0"></span>นำเสนอแล้ว</span>`
-                    : `<span class="inline-flex items-center gap-1.5 py-1 px-3 rounded-full text-sm font-medium bg-amber-50 text-amber-700 border border-amber-200 shrink-0 whitespace-nowrap"><span class="w-2 h-2 rounded-full bg-amber-500 shrink-0"></span>ยังไม่นำเสนอ</span>`;
+                const presentBadge = item.presented
+                    ? `<span class="inline-flex w-7 h-7 rounded-full bg-purple-100 text-purple-600 items-center justify-center" title="นำเสนอแล้ว"><i data-lucide="check" class="w-4 h-4"></i></span>`
+                    : `<span class="inline-flex w-7 h-7 rounded-full bg-slate-100 text-slate-400 items-center justify-center" title="ยังไม่นำเสนอ"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
 
                 // Badge แบนเนอร์แสดงเป็นรายวิชาในตาราง (แยกแสดงสีตามหมวดวิชาจริง)
                 let proBadge = '';
@@ -548,17 +599,17 @@
 
                 // whitespace-normal บนวิชาและชื่อวิชา เพื่อป้องการล้นจอและทำให้แสดงผลในกรอบที่สวยงามได้ลงตัว
                 const row = `
-                    <tr class="hover:bg-slate-50/50 transition text-sm md:text-base">
-                        <td class="px-6 py-4 font-medium text-slate-500 whitespace-nowrap">${item.termYear}</td>
-                        <td class="px-6 py-4 font-medium text-slate-900 whitespace-nowrap">${item.id}</td>
-                        <td class="px-6 py-4 whitespace-normal break-words max-w-xs font-medium text-slate-800">${item.name}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">ปี ${item.year}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${proBadge}</td>
-                        <td class="px-6 py-4 whitespace-normal max-w-xs">${item.instructor}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${bookingBadge}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${presentBadge}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${uploadContent}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">${uploadContent56}</td>
+                    <tr class="hover:bg-slate-50/50 transition text-sm">
+                        <td class="px-4 py-3 font-medium text-slate-500 whitespace-nowrap">${item.termYear}</td>
+                        <td class="px-4 py-3 font-medium text-slate-900 whitespace-nowrap">${item.id}</td>
+                        <td class="px-4 py-3 whitespace-normal break-words font-medium text-slate-800">${item.name}</td>
+                        <td class="px-4 py-3 text-center whitespace-nowrap">${item.year}</td>
+                        <td class="px-4 py-3 whitespace-nowrap">${proBadge}</td>
+                        <td class="px-4 py-3 whitespace-normal">${item.instructor}</td>
+                        <td class="px-4 py-3 text-center">${bookingBadge}</td>
+                        <td class="px-4 py-3 text-center">${presentBadge}</td>
+                        <td class="px-4 py-3 text-center">${uploadContent}</td>
+                        <td class="px-4 py-3 text-center">${uploadContent56}</td>
                     </tr>
                 `;
                 tableBody.insertAdjacentHTML('beforeend', row);
