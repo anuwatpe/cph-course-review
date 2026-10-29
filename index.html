@@ -441,7 +441,18 @@
             });
 
             if (!container.dataset.initialized && allAvailableTerms.length > 0) {
-                activeTerms = [allAvailableTerms[0]]; 
+                const [latestTermNum, latestYear] = allAvailableTerms[0].split('/');
+                if (latestTermNum === '1') {
+                    // เทอม 1 → แสดงเฉพาะเทอม 1 ของปีนั้น
+                    activeTerms = [`1/${latestYear}`].filter(t => allAvailableTerms.includes(t));
+                } else {
+                    // เทอม 2 หรือ 3 → แสดง เทอม 2+3 ของปีเดียวกัน
+                    activeTerms = allAvailableTerms.filter(t => {
+                        const [tNum, tYear] = t.split('/');
+                        return tYear === latestYear && (tNum === '2' || tNum === '3');
+                    });
+                }
+                if (activeTerms.length === 0) activeTerms = [allAvailableTerms[0]];
                 container.dataset.initialized = "true";
             }
 
