@@ -54,6 +54,22 @@
         .tab-nav { color: #64748b; background: transparent; cursor: pointer; }
         .tab-nav.active { color: #2563eb; background: #eff6ff; }
         .tab-nav:hover:not(.active) { color: #334155; background: #f8fafc; }
+
+        .agenda-grid { display: grid; grid-template-columns: 7rem minmax(0, 1.5fr) minmax(0, 1fr) 8rem 13rem; gap: 1rem; align-items: center; }
+        .agenda-row { padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; background: white; }
+        .agenda-row > * { min-width: 0; overflow-wrap: anywhere; }
+        .agenda-day + .agenda-day { margin-top: 1.5rem; }
+        .agenda-action { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 2.25rem; padding: .35rem .6rem; border: 1px solid #cbd5e1; border-radius: .375rem; font-size: .75rem; color: #334155; background: white; }
+        .agenda-action:hover { background: #eff6ff; border-color: #93c5fd; }
+        @media (max-width: 1023px) {
+            .agenda-grid { grid-template-columns: 5.5rem minmax(0, 1fr); gap: .5rem .75rem; }
+            .agenda-columns { display: none; }
+            .agenda-time { grid-column: 1; grid-row: 1 / span 4; align-self: start; }
+            .agenda-course { grid-column: 2; grid-row: 1; }
+            .agenda-instructor { grid-column: 2; grid-row: 2; }
+            .agenda-status { grid-column: 2; grid-row: 3; }
+            .agenda-documents { grid-column: 2; grid-row: 4; }
+        }
     </style>
 </head>
 <body class="text-slate-800 antialiased font-sans p-4 md:p-8">
@@ -74,7 +90,7 @@
         </div>
         
         <!-- ตัวกรอง และ ปุ่ม Action -->
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto" id="multiSelectContainer">
+        <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto min-w-0" id="multiSelectContainer">
             <div class="relative w-full sm:w-auto">
                 <button id="multiSelectBtn" class="bg-white border border-slate-200 text-slate-700 text-base rounded-lg focus:ring-1 focus:ring-primary focus:border-primary px-4 py-2.5 shadow-sm cursor-pointer min-w-[220px] w-full flex justify-between items-center transition-all hover:bg-slate-50">
                     <span id="multiSelectLabel" class="truncate font-medium">กำลังโหลด...</span>
@@ -102,12 +118,16 @@
     </header>
 
     <!-- Tab Navigation -->
-    <div class="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit">
-        <button id="tabDashboard" onclick="switchTab('dashboard')" class="tab-nav active flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+    <div class="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit max-w-full overflow-x-auto" role="tablist" aria-label="มุมมองรายวิชา">
+        <button id="tabDashboard" onclick="switchTab('dashboard')" role="tab" aria-selected="true" aria-controls="dashboardView" class="tab-nav active shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span>Dashboard</span>
         </button>
-        <button id="tabBooking" onclick="switchTab('booking')" class="tab-nav flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+        <button id="tabSchedule" onclick="switchTab('schedule')" role="tab" aria-selected="false" aria-controls="scheduleView" tabindex="-1" title="กำหนดการประชุม" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="calendar-days" class="w-4 h-4"></i>
+            <span>กำหนดการ</span>
+        </button>
+        <button id="tabBooking" onclick="switchTab('booking')" role="tab" aria-selected="false" aria-controls="bookingView" tabindex="-1" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
             <i data-lucide="clock" class="w-4 h-4"></i>
             <span>ลงเวลา</span>
         </button>
@@ -122,7 +142,7 @@
     </div>
 
     <!-- Dashboard View -->
-    <div id="dashboardView">
+    <div id="dashboardView" role="tabpanel" aria-labelledby="tabDashboard">
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
@@ -316,8 +336,44 @@
     </div>
     </div><!-- /dashboardView -->
 
+    <!-- Meeting Schedule View -->
+    <section id="scheduleView" class="hidden" role="tabpanel" aria-labelledby="tabSchedule">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div>
+                <h2 class="text-xl font-medium text-slate-900">กำหนดการประชุมวิพากษ์รายวิชา</h2>
+                <p id="scheduleSummary" class="text-sm text-slate-500 mt-1" aria-live="polite"></p>
+            </div>
+            <a href="https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-primary border border-blue-200 rounded-md px-3 py-2 bg-white hover:bg-blue-50">
+                <i data-lucide="square-pen" class="w-4 h-4"></i>ลงเวลา / แก้ไขรายการ
+            </a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,1fr)_12rem_auto] gap-3 p-4 bg-white border-y border-slate-200 mb-5 items-end">
+            <label class="block min-w-0 text-sm text-slate-600">
+                <span class="block mb-1.5">ค้นหารายวิชา / อาจารย์</span>
+                <input id="scheduleSearchInput" type="search" placeholder="รหัสวิชา ชื่อวิชา หรืออาจารย์" class="w-full min-w-0 rounded-md border border-slate-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+            </label>
+            <label class="block min-w-0 text-sm text-slate-600">
+                <span class="block mb-1.5">วันประชุม</span>
+                <select id="scheduleDayFilter" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm"><option value="all">ทุกวัน</option></select>
+            </label>
+            <label class="block min-w-0 text-sm text-slate-600">
+                <span class="block mb-1.5">สถานะ</span>
+                <select id="scheduleStatusFilter" class="w-full min-w-0 rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm">
+                    <option value="all">ทั้งหมด</option>
+                    <option value="pending">รอนำเสนอ</option>
+                    <option value="presented">นำเสนอแล้ว</option>
+                    <option value="issue">ตรวจสอบรายวิชา</option>
+                </select>
+            </label>
+            <button id="clearScheduleFiltersBtn" type="button" title="ล้างตัวกรองกำหนดการ" aria-label="ล้างตัวกรองกำหนดการ" class="w-10 h-10 rounded-md border border-slate-300 text-slate-500 inline-flex items-center justify-center hover:bg-slate-50 disabled:opacity-40">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+        </div>
+        <div id="scheduleDays"><p class="py-12 text-center text-slate-500">กำลังโหลดกำหนดการ...</p></div>
+    </section>
+
     <!-- Booking View -->
-    <div id="bookingView" class="hidden">
+    <div id="bookingView" class="hidden" role="tabpanel" aria-labelledby="tabBooking">
         <div class="card overflow-hidden mb-8" style="height: calc(100vh - 220px); min-height: 560px;">
             <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
                 <h3 class="font-medium text-slate-800 flex items-center gap-2">
@@ -355,22 +411,16 @@
 
         // Tab switching
         function switchTab(tab) {
-            const dashView = document.getElementById('dashboardView');
-            const bookView = document.getElementById('bookingView');
-            const tabDash = document.getElementById('tabDashboard');
-            const tabBook = document.getElementById('tabBooking');
-            if (tab === 'dashboard') {
-                dashView.classList.remove('hidden');
-                bookView.classList.add('hidden');
-                tabDash.classList.add('active');
-                tabBook.classList.remove('active');
-                loadData();
-            } else {
-                dashView.classList.add('hidden');
-                bookView.classList.remove('hidden');
-                tabDash.classList.remove('active');
-                tabBook.classList.add('active');
-            }
+            const tabs = { dashboard: 'tabDashboard', schedule: 'tabSchedule', booking: 'tabBooking' };
+            if (!tabs[tab]) return;
+            Object.entries(tabs).forEach(([view, id]) => {
+                document.getElementById(`${view}View`).classList.toggle('hidden', view !== tab);
+                const button = document.getElementById(id);
+                button.classList.toggle('active', view === tab);
+                button.setAttribute('aria-selected', String(view === tab));
+                button.tabIndex = view === tab ? 0 : -1;
+            });
+            if (tab !== 'booking') loadData();
             lucide.createIcons();
         }
 
@@ -391,6 +441,9 @@
         let loadingData = false;
         let lastSchedule = null;
         let lastScheduleUpdatedAt = null;
+        let lastBookingMerge = null;
+        let bookingReadFailed = false;
+        const BOOKING_EDIT_URL = 'https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/edit?gid=0';
 
         const multiSelectBtn = document.getElementById('multiSelectBtn');
         const multiSelectDropdown = document.getElementById('multiSelectDropdown');
@@ -547,6 +600,8 @@
                 }
                 const bookingMerge = lastSchedule ? BookingSync.merge(globalData, lastSchedule) : null;
                 if (bookingMerge) globalData = bookingMerge.data;
+                lastBookingMerge = bookingMerge;
+                bookingReadFailed = bookingResult.status === 'rejected';
                 showBookingSyncStatus(bookingMerge, bookingResult.status === 'rejected');
                 document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
                 populateTermFilter(globalData);
@@ -557,6 +612,8 @@
                 const status = document.getElementById('bookingSyncStatus');
                 status.className = 'text-amber-700';
                 status.textContent = 'อัปเดตข้อมูลไม่สำเร็จ กำลังแสดงข้อมูลเดิม กรุณาลองใหม่';
+                bookingReadFailed = true;
+                renderSchedule();
             } finally {
                 loadingData = false;
                 document.getElementById('refreshDataBtn').disabled = false;
@@ -666,7 +723,100 @@
                 return matchSearch && matchTerm && matchUpload34 && matchUpload56;
             });
             updateDashboard(filteredData);
+            renderSchedule();
         }
+
+        function scheduleStatus(entry) {
+            if (entry.issue) return 'issue';
+            return (entry.course ? entry.course.presented : entry.presented === true) ? 'presented' : 'pending';
+        }
+
+        function renderSchedule() {
+            const container = document.getElementById('scheduleDays');
+            const summary = document.getElementById('scheduleSummary');
+            if (!lastBookingMerge) {
+                summary.textContent = '';
+                container.innerHTML = `<p class="py-12 text-center text-slate-500 bg-white border-y border-slate-200">${bookingReadFailed ? 'ยังไม่สามารถอ่านกำหนดการประชุมได้' : 'กำลังโหลดกำหนดการ...'}</p>`;
+                return;
+            }
+            const entries = lastBookingMerge.entries.filter(entry => entry.course
+                ? activeTerms.includes(entry.course.termYear) : entry.terms.some(term => activeTerms.includes(term)));
+            const days = BookingSync.groupAgenda(entries);
+            const dayFilter = document.getElementById('scheduleDayFilter');
+            const selectedDay = dayFilter.value;
+            dayFilter.replaceChildren(new Option('ทุกวัน', 'all'));
+            days.forEach(day => dayFilter.add(new Option(day.label, day.key)));
+            dayFilter.value = days.some(day => day.key === selectedDay) ? selectedDay : 'all';
+            const normalizeSearch = value => String(value || '').normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+            const query = normalizeSearch(document.getElementById('scheduleSearchInput').value);
+            const status = document.getElementById('scheduleStatusFilter').value;
+            const filtered = days.filter(day => dayFilter.value === 'all' || day.key === dayFilter.value).map(day => ({
+                ...day, entries: day.entries.filter(entry => {
+                    const haystack = [entry.code, entry.name, entry.instructor, entry.course?.id, entry.course?.name, entry.course?.instructor].join(' ');
+                    return normalizeSearch(haystack).includes(query) && (status === 'all' || scheduleStatus(entry) === status);
+                })
+            })).filter(day => day.entries.length);
+            const count = filtered.reduce((total, day) => total + day.entries.length, 0);
+            summary.textContent = `${count} รายการ ใน ${filtered.length} วัน`;
+            document.getElementById('clearScheduleFiltersBtn').disabled = !query && dayFilter.value === 'all' && status === 'all';
+            if (!count) {
+                container.innerHTML = `<div class="py-12 px-4 text-center text-slate-500 bg-white border-y border-slate-200"><i data-lucide="calendar-search" class="w-8 h-8 mx-auto mb-3 text-slate-400"></i>${entries.length ? 'ไม่พบรายการตามตัวกรองที่เลือก' : 'ยังไม่มีรายการลงเวลาในภาคการศึกษาที่เลือก'}</div>`;
+            } else {
+                container.innerHTML = filtered.map(day => `
+                    <section class="agenda-day" aria-label="${escapeHtml(day.label)}">
+                        <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 bg-white border-y border-slate-200">
+                            <div><h3 class="font-medium text-slate-900 flex items-center gap-2"><i data-lucide="calendar-days" class="w-5 h-5 shrink-0 text-primary"></i>${escapeHtml(day.label)}</h3><p class="text-xs text-slate-500 mt-1">${day.entries.length} รายวิชา</p></div>
+                            ${day.meetingUrls.length === 1 ? `<a href="${escapeHtml(day.meetingUrls[0])}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 bg-primary hover:bg-blue-700 text-white text-sm rounded-md px-3 py-2"><i data-lucide="video" class="w-4 h-4"></i>เข้าประชุม Teams</a>` : day.meetingUrls.length ? '<span class="text-xs text-slate-500">ลิงก์ประชุมแยกตามรายวิชา</span>' : '<span class="text-xs text-slate-500">ยังไม่มีลิงก์ประชุม</span>'}
+                        </div>
+                        <div class="agenda-grid agenda-columns px-5 py-2.5 bg-slate-50 text-xs font-medium text-slate-500"><span>เวลา</span><span>รายวิชา / ชั้นปี</span><span>ผู้รับผิดชอบ</span><span>สถานะ</span><span>เอกสาร / ลงเวลา</span></div>
+                        ${day.entries.map(entry => renderAgendaEntry(entry, day.meetingUrls.length > 1)).join('')}
+                    </section>`).join('');
+            }
+            lucide.createIcons();
+        }
+
+        function renderAgendaEntry(entry, separateMeeting) {
+            const course = entry.course;
+            const name = course?.name || entry.name || 'ยังไม่ระบุชื่อรายวิชา';
+            const code = course?.id || entry.code || 'ไม่ระบุรหัส';
+            const level = course?.year || entry.level || '-';
+            const instructor = entry.instructor || course?.instructor || 'ยังไม่ระบุผู้รับผิดชอบ';
+            const status = scheduleStatus(entry);
+            const statusText = { issue: 'ตรวจสอบรายวิชา', presented: 'นำเสนอแล้ว', pending: 'รอนำเสนอ' }[status];
+            const statusColor = { issue: 'bg-amber-50 text-amber-800', presented: 'bg-emerald-50 text-emerald-700', pending: 'bg-blue-50 text-blue-700' }[status];
+            const documents = [{ label: 'มคอ.3-4', url: course?.fileLink }, { label: 'มคอ.5-6', url: course?.fileLink56 }]
+                .filter(file => BookingSync.safeExternalUrl(file.url)).map(file => `<a href="${escapeHtml(BookingSync.safeExternalUrl(file.url))}" target="_blank" rel="noopener noreferrer" class="agenda-action" title="เปิด ${file.label}: ${escapeHtml(name)}"><i data-lucide="file-text" class="w-3.5 h-3.5 shrink-0"></i>${file.label}</a>`).join('');
+            const editLink = `${BOOKING_EDIT_URL}#gid=0&range=A${entry.row}:I${entry.row}`;
+            const meetingUrl = BookingSync.safeExternalUrl(entry.meetingUrl);
+            const meetingLink = separateMeeting && meetingUrl ? `<a href="${escapeHtml(meetingUrl)}" target="_blank" rel="noopener noreferrer" class="agenda-action" title="เข้าประชุม Teams: ${escapeHtml(name)}" aria-label="เข้าประชุม Teams: ${escapeHtml(name)}"><i data-lucide="video" class="w-4 h-4"></i></a>` : '';
+            return `<article class="agenda-grid agenda-row" data-agenda-row="${entry.row}">
+                <div class="agenda-time text-sm font-medium text-blue-700 whitespace-nowrap">${escapeHtml(entry.time)}</div>
+                <div class="agenda-course"><h4 class="font-medium text-sm text-slate-900">${escapeHtml(name)}</h4><p class="text-xs text-slate-500 mt-1">${escapeHtml(code)} &middot; ชั้นปี ${escapeHtml(level)}${course ? ` &middot; ${escapeHtml(course.termYear)}` : ''}</p>${entry.issue ? `<p class="text-xs text-amber-700 mt-1">${escapeHtml(entry.issue)}</p>` : ''}</div>
+                <div class="agenda-instructor text-sm text-slate-600">${escapeHtml(instructor)}</div>
+                <div class="agenda-status"><span class="inline-flex px-2 py-1 rounded text-xs font-medium ${statusColor}">${statusText}</span></div>
+                <div class="agenda-documents flex flex-wrap items-center gap-1.5">${documents || '<span class="text-xs text-slate-400">ไม่มีลิงก์เอกสาร</span>'}${meetingLink}<a href="${escapeHtml(editLink)}" target="_blank" rel="noopener noreferrer" class="agenda-action" title="แก้ไขการลงเวลา: ${escapeHtml(name)}" aria-label="แก้ไขการลงเวลา: ${escapeHtml(name)}"><i data-lucide="square-pen" class="w-4 h-4"></i></a></div>
+            </article>`;
+        }
+
+        document.getElementById('scheduleSearchInput').addEventListener('input', renderSchedule);
+        document.querySelector('[role="tablist"]').addEventListener('keydown', event => {
+            const tabs = [...document.querySelectorAll('[role="tab"]')];
+            const index = tabs.indexOf(event.target);
+            if (index < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+                : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            tabs[next].click();
+            tabs[next].focus();
+        });
+        document.getElementById('scheduleDayFilter').addEventListener('change', renderSchedule);
+        document.getElementById('scheduleStatusFilter').addEventListener('change', renderSchedule);
+        document.getElementById('clearScheduleFiltersBtn').addEventListener('click', () => {
+            document.getElementById('scheduleSearchInput').value = '';
+            document.getElementById('scheduleDayFilter').value = 'all';
+            document.getElementById('scheduleStatusFilter').value = 'all';
+            renderSchedule();
+        });
 
         document.getElementById('searchInput').addEventListener('input', applyFilters);
 

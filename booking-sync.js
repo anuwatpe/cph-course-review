@@ -38,10 +38,24 @@
         return row.findIndex(value => normalizedNames.includes(text(value).replace(/\s+/g, '')));
     }
 
+    function safeExternalUrl(value) {
+        try {
+            const url = new URL(String(value || '').trim());
+            return url.protocol === 'https:' && !url.username && !url.password ? url.href : '';
+        } catch (_) { return ''; }
+    }
+
+    function teamsUrl(value) {
+        const safe = safeExternalUrl(value);
+        if (!safe) return '';
+        return ['teams.microsoft.com', 'teams.live.com', 'teams.cloud.microsoft'].includes(new URL(safe).hostname) ? safe : '';
+    }
+
     function readSchedule(rows) {
         let columns = null;
         let scope = [];
         let date = '';
+        let meetingUrl = '';
         let headerCount = 0;
         let timeSlotCount = 0;
         const records = [];
@@ -58,11 +72,12 @@
                     level: column(row, ['ชั้นปี']),
                     term: column(row, ['ภาคการศึกษา', 'เทอม']),
                     year: column(row, ['ปีการศึกษา']),
+                    instructor: column(row, ['ผู้รับผิดชอบรายวิชา', 'ผู้รับผิดชอบ', 'อาจารย์']),
                     presented: column(row, ['นำเสนอ', 'การนำเสนอ', 'นำเสนอแล้ว'])
                 };
                 // Repeated day headers may leave shared column labels blank.
                 if (previousColumns && previousColumns.name === columns.name && previousColumns.time === columns.time) {
-                    ['code', 'level', 'term', 'year', 'presented'].forEach(key => {
+                    ['code', 'level', 'term', 'year', 'presented', 'instructor'].forEach(key => {
                         const previousIndex = previousColumns[key];
                         if (columns[key] < 0 && previousIndex >= 0 && text(row[previousIndex]) === '') {
                             columns[key] = previousIndex;
@@ -78,12 +93,16 @@
                 scope = titleScope;
                 scope.forEach(term => coveredTerms.add(term));
                 date = '';
+                meetingUrl = '';
                 return;
             }
             if (/^วัน/.test(text(row[0]))) {
-                date = text(row[0]);
+                date = text(row[0]).replace(/\s+/g, ' ');
+                meetingUrl = '';
                 return;
             }
+            const meeting = row.map(text).join(' ').match(/(?:Meeting\s*link|ลิงก์(?:เข้า)?ประชุม)\s*:\s*(\S+)/i);
+            if (meeting) { meetingUrl = teamsUrl(meeting[1]); return; }
             if (!columns) return;
             const time = text(row[columns.time]);
             if (!/^\d{1,2}[:.]\d{2}\s*[-–—]\s*\d{1,2}[:.]\d{2}$/.test(time)) return;
@@ -106,7 +125,8 @@
             const trueValues = ['TRUE', text('นำเสนอแล้ว')];
             const falseValues = ['FALSE', text('ยังไม่นำเสนอ')];
             const presented = [...trueValues, ...falseValues].includes(presentedText) ? trueValues.includes(presentedText) : null;
-            records.push({ code, name, level: number(row[columns.level]), terms: [...terms], date, time, presented, row: index + 1 });
+            records.push({ code, name, level: number(row[columns.level]), terms: [...terms], date, time, presented,
+                instructor: text(row[columns.instructor]), meetingUrl, row: index + 1 });
         });
 
         if (!headerCount) throw new Error('ไม่พบหัวคอลัมน์ เวลา และ รายวิชา ในชีตลงเวลา');
@@ -120,6 +140,7 @@
         const matches = new Map();
         const uncertain = new Set();
         const issues = [];
+        const entries = [];
         let matchedCount = 0;
 
         schedule.records.forEach(record => {
@@ -134,10 +155,13 @@
             }
             if (candidates.length !== 1) {
                 candidates.forEach(({ index }) => uncertain.add(index));
-                issues.push({ ...record, reason: candidates.length ? 'พบหลายรายวิชา กรุณาระบุรหัสวิชา/ชั้นปี' : 'ไม่พบรายวิชาในชีตสรุปของเทอมนี้' });
+                const reason = candidates.length ? 'พบหลายรายวิชา กรุณาระบุรหัสวิชา/ชั้นปี' : 'ไม่พบรายวิชาในชีตสรุปของเทอมนี้';
+                issues.push({ ...record, reason });
+                entries.push({ ...record, courseIndex: -1, issue: reason });
                 return;
             }
             const index = candidates[0].index;
+            entries.push({ ...record, courseIndex: index, issue: '' });
             if (!matches.has(index)) matches.set(index, []);
             matches.get(index).push(record);
             matchedCount += 1;
@@ -151,10 +175,47 @@
             const presented = reportedPresentations.length ? reportedPresentations.some(slot => slot.presented) : course.presented;
             return { ...course, booking: slots.length > 0, presented, bookingSource: 'schedule', bookingSlots: slots };
         });
-        return { data, issues, matchedCount, totalCount: schedule.records.length, coveredTerms: schedule.coveredTerms };
+        return { data, issues, matchedCount, totalCount: schedule.records.length, coveredTerms: schedule.coveredTerms,
+            entries: entries.map(({ courseIndex, ...entry }) => ({ ...entry, course: courseIndex >= 0 ? data[courseIndex] : null })) };
     }
 
-    const api = { readSchedule, merge, normalizeCode, normalizeName };
+    function dateInfo(value) {
+        const label = text(value).replace(/\s+/g, ' ') || 'ยังไม่ระบุวัน';
+        const months = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+            'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+        const match = label.match(/(\d{1,2})\s+(\S+)\s+((?:25|20)\d{2})/);
+        if (match) {
+            const month = months.indexOf(match[2]);
+            const year = Number(match[3]) >= 2400 ? Number(match[3]) - 543 : Number(match[3]);
+            const day = Number(match[1]);
+            const date = new Date(Date.UTC(year, month, day));
+            if (month >= 0 && date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
+                return { key: date.toISOString().slice(0, 10), label, order: date.getTime() };
+            }
+        }
+        return { key: label, label, order: Infinity };
+    }
+
+    function groupAgenda(entries) {
+        const groups = new Map();
+        entries.forEach(entry => {
+            const date = dateInfo(entry.date);
+            if (!groups.has(date.key)) groups.set(date.key, { ...date, entries: [], meetingUrls: [] });
+            const group = groups.get(date.key);
+            group.entries.push(entry);
+            const link = teamsUrl(entry.meetingUrl);
+            if (link && !group.meetingUrls.includes(link)) group.meetingUrls.push(link);
+        });
+        const minutes = time => {
+            const match = text(time).match(/^(\d{1,2})[:.](\d{2})/);
+            return match ? Number(match[1]) * 60 + Number(match[2]) : Infinity;
+        };
+        return [...groups.values()].sort((a, b) => a.order - b.order).map(group => ({
+            ...group, entries: group.entries.sort((a, b) => minutes(a.time) - minutes(b.time) || a.row - b.row)
+        }));
+    }
+
+    const api = { readSchedule, merge, normalizeCode, normalizeName, safeExternalUrl, groupAgenda };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.BookingSync = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { readSchedule, merge } = require('../booking-sync.js');
+const { readSchedule, merge, groupAgenda, safeExternalUrl } = require('../booking-sync.js');
 
 const header = ['ลำดับ', 'เวลา', 'รายวิชา', 'ชั้นปี', 'รหัสวิชา', 'นำเสนอ'];
 const course = (overrides = {}) => ({
@@ -119,4 +119,81 @@ test('supports an explicit term and academic-year column without a title', () =>
     ]);
     assert.deepEqual(parsed.coveredTerms, ['2/2569']);
     assert.equal(merge([course()], parsed).matchedCount, 1);
+});
+
+test('reads the instructor and the correct Teams link for each meeting day', () => {
+    const parsed = readSchedule([
+        ['ตารางเวลานำเสนอ 2-3/2569'],
+        ['วันจันทร์ ที่ 2 พฤศจิกายน 2569'],
+        ['Meeting link: https://teams.microsoft.com/meet/111?p=first'],
+        [...header, 'ผู้รับผิดชอบรายวิชา'],
+        ['1', '09:00–09:20', 'วิชา ก', '3', '202300319', '', 'อาจารย์ ก'],
+        ['วันอังคาร ที่ 3 พฤศจิกายน  2569'],
+        ['Meeting link: https://teams.microsoft.com/meet/222?p=second'],
+        [...header, 'ผู้รับผิดชอบรายวิชา'],
+        ['2', '10:00–10:20', 'วิชา ข', '3', '202300319', '', 'อาจารย์ ข']
+    ]);
+    assert.equal(parsed.records[0].meetingUrl, 'https://teams.microsoft.com/meet/111?p=first');
+    assert.equal(parsed.records[1].meetingUrl, 'https://teams.microsoft.com/meet/222?p=second');
+    assert.equal(parsed.records[1].instructor, 'อาจารย์ ข');
+    assert.equal(parsed.records[1].date, 'วันอังคาร ที่ 3 พฤศจิกายน 2569');
+});
+
+test('a day without a meeting link never inherits the previous day link', () => {
+    const parsed = readSchedule([
+        ['ตารางเวลานำเสนอ 2/2569'], ['วันจันทร์ ที่ 2 พฤศจิกายน 2569'],
+        ['Meeting link: https://teams.microsoft.com/meet/111'], header,
+        ['1', '09:00–09:20', 'วิชา ก', '3'],
+        ['วันอังคาร ที่ 3 พฤศจิกายน 2569'], header,
+        ['2', '09:00–09:20', 'วิชา ข', '3']
+    ]);
+    assert.equal(parsed.records[1].meetingUrl, '');
+});
+
+test('unsafe meeting links are rejected while legitimate HTTPS documents remain usable', () => {
+    for (const url of ['javascript:alert(1)', 'https://teams.microsoft.com.evil.test/meet/1', 'https://user:password@teams.microsoft.com/meet/1']) {
+        const parsed = readSchedule([['ตาราง 2/2569'], ['วันจันทร์ ที่ 2 พฤศจิกายน 2569'], [`Meeting link: ${url}`], header, ['1', '09:00–09:20', 'วิชา', '3']]);
+        assert.equal(parsed.records[0].meetingUrl, '');
+    }
+    assert.equal(safeExternalUrl('javascript:alert(1)'), '');
+    assert.equal(safeExternalUrl('https://drive.google.com/file/d/abc/view'), 'https://drive.google.com/file/d/abc/view');
+});
+
+test('agenda groups sort chronologically by Thai Buddhist date and time', () => {
+    const groups = groupAgenda([
+        { row: 1, date: 'วันอังคาร ที่ 3 พฤศจิกายน 2569', time: '09:00–09:20' },
+        { row: 2, date: 'วันจันทร์ ที่ 2 พฤศจิกายน 2569', time: '13:00–13:20' },
+        { row: 3, date: 'วันจันทร์ ที่ 2 พฤศจิกายน 2569', time: '09:00–09:20' }
+    ]);
+    assert.deepEqual(groups.map(group => group.key), ['2026-11-02', '2026-11-03']);
+    assert.deepEqual(groups[0].entries.map(entry => entry.row), [3, 2]);
+});
+
+test('agenda preserves missing or invalid dates without fabricating calendar dates', () => {
+    const groups = groupAgenda([
+        { row: 1, date: '', time: '09:00–09:20' },
+        { row: 2, date: 'วันที่ 31 กุมภาพันธ์ 2569', time: '09:00–09:20' }
+    ]);
+    assert.equal(groups[0].label, 'ยังไม่ระบุวัน');
+    assert.ok(!groups.some(group => group.key.startsWith('2026-')));
+});
+
+test('merged agenda entries expose documents from the matching course and retain unmatched bookings', () => {
+    const result = merge([course({ fileLink: 'https://drive.google.com/file/d/abc/view', instructor: 'อาจารย์ ก' })], schedule([
+        ['1', '09:00–09:20', '', '3', '202300319', 'TRUE'],
+        ['2', '09:20–09:40', 'วิชาที่ไม่พบ', '3', '999999999']
+    ]));
+    assert.equal(result.entries.length, 2);
+    assert.equal(result.entries[0].course.fileLink, 'https://drive.google.com/file/d/abc/view');
+    assert.equal(result.entries[0].course.presented, true);
+    assert.equal(result.entries[1].course, null);
+    assert.match(result.entries[1].issue, /ไม่พบรายวิชา/);
+});
+
+test('agenda exposes all distinct meeting rooms in one day', () => {
+    const groups = groupAgenda([
+        { row: 1, date: 'วันจันทร์ ที่ 2 พฤศจิกายน 2569', time: '09:00–09:20', meetingUrl: 'https://teams.microsoft.com/meet/111' },
+        { row: 2, date: 'วันจันทร์ ที่ 2 พฤศจิกายน 2569', time: '09:20–09:40', meetingUrl: 'https://teams.microsoft.com/meet/222' }
+    ]);
+    assert.equal(groups[0].meetingUrls.length, 2);
 });
