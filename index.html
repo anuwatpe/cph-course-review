@@ -95,6 +95,9 @@
                 <i data-lucide="upload-cloud" class="w-5 h-5"></i>
                 <span>ลงเวลาและอัปโหลดไฟล์ มคอ.</span>
             </a>
+            <button id="refreshDataBtn" type="button" title="อัปเดตข้อมูลล่าสุด" aria-label="อัปเดตข้อมูลล่าสุด" class="bg-white border border-slate-200 text-slate-600 rounded-lg w-11 h-11 shrink-0 flex items-center justify-center hover:bg-slate-50 disabled:opacity-50 disabled:cursor-wait">
+                <i data-lucide="refresh-cw" class="w-5 h-5"></i>
+            </button>
         </div>
     </header>
 
@@ -108,6 +111,14 @@
             <i data-lucide="clock" class="w-4 h-4"></i>
             <span>ลงเวลา</span>
         </button>
+    </div>
+
+    <div class="mb-6 text-sm text-slate-600" aria-live="polite">
+        <p id="bookingSyncStatus">กำลังตรวจสอบข้อมูลลงเวลา...</p>
+        <details id="bookingSyncIssues" class="hidden mt-2 text-amber-800">
+            <summary class="cursor-pointer font-medium">รายการลงเวลาที่ต้องตรวจสอบ</summary>
+            <ul id="bookingSyncIssueList" class="list-disc pl-5 mt-2 space-y-1"></ul>
+        </details>
     </div>
 
     <!-- Dashboard View -->
@@ -284,7 +295,7 @@
                         <th class="px-4 py-3 w-12 text-center" title="ชั้นปี">ปี</th>
                         <th class="px-4 py-3 w-36">หมวดวิชา</th>
                         <th class="px-4 py-3 w-36">ผู้รับผิดชอบ</th>
-                        <th class="px-4 py-3 w-16 text-center" title="สถานะการลงเวลาวิพากษ์">ลงเวลา</th>
+                        <th class="px-4 py-3 w-36 text-center" title="สถานะการลงเวลาวิพากษ์">ลงเวลา / เวลานัด</th>
                         <th class="px-4 py-3 w-16 text-center" title="สถานะการนำเสนอ">นำเสนอ</th>
                         <th class="px-4 py-3 w-16 text-center">มคอ.3-4</th>
                         <th class="px-4 py-3 w-16 text-center">มคอ.5-6</th>
@@ -295,12 +306,12 @@
                 </tbody>
             </table>
         </div>
-        <div class="p-4 border-t border-slate-100 bg-slate-50 text-sm text-slate-500 text-center flex items-center justify-center gap-2">
+        <div class="p-4 border-t border-slate-100 bg-slate-50 text-sm text-slate-500 text-center flex flex-wrap items-center justify-center gap-2">
             <span class="relative flex h-2 w-2">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            อัปเดตข้อมูลล่าสุด: <span id="lastUpdate"></span> (อัปเดตอัตโนมัติทุก 5 นาที)
+            อัปเดตข้อมูลล่าสุด: <span id="lastUpdate"></span> (อัปเดตอัตโนมัติทุก 1 นาที)
         </div>
     </div>
     </div><!-- /dashboardView -->
@@ -322,6 +333,7 @@
             </div>
             <iframe
                 src="https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/preview"
+                loading="lazy"
                 class="w-full"
                 style="height: calc(100% - 64px);"
                 frameborder="0"
@@ -336,6 +348,7 @@
         <p class="mt-1.5">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span> &middot; <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded" id="footerVersion"></span></p>
     </footer>
 
+    <script src="booking-sync.js"></script>
     <script>
         const APP_VERSION = 'v1.1.0';
         const APP_RELEASE_DATE = '30 ตุลาคม 2568';
@@ -351,6 +364,7 @@
                 bookView.classList.add('hidden');
                 tabDash.classList.add('active');
                 tabBook.classList.remove('active');
+                loadData();
             } else {
                 dashView.classList.add('hidden');
                 bookView.classList.remove('hidden');
@@ -372,6 +386,11 @@
         let allAvailableTerms = [];
         let activeUpload34Filter = 'all';
         let activeUpload56Filter = 'all';
+        const BOOKING_CSV_URL = 'https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/export?format=csv&gid=0';
+        const AUTO_REFRESH_MS = 60000;
+        let loadingData = false;
+        let lastSchedule = null;
+        let lastScheduleUpdatedAt = null;
 
         const multiSelectBtn = document.getElementById('multiSelectBtn');
         const multiSelectDropdown = document.getElementById('multiSelectDropdown');
@@ -414,7 +433,52 @@
             applyFilters();
         });
 
+        async function fetchCsv(url, header) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 20000);
+            try {
+                const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+                if (!response.ok) throw new Error(`อ่านชีตไม่สำเร็จ (HTTP ${response.status})`);
+                const csvText = await response.text();
+                if (/^\s*</.test(csvText)) throw new Error('ชีตไม่อนุญาตให้อ่าน CSV กรุณาตรวจสิทธิ์การเข้าถึง');
+                const parsed = Papa.parse(csvText, {
+                    header, skipEmptyLines: header ? 'greedy' : false,
+                    transformHeader: value => value.replace(/^\uFEFF/, '').trim()
+                });
+                if (parsed.errors.length) throw new Error('รูปแบบ CSV ไม่ถูกต้อง');
+                return parsed.data;
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        function showBookingSyncStatus(result, error) {
+            const status = document.getElementById('bookingSyncStatus');
+            const details = document.getElementById('bookingSyncIssues');
+            const list = document.getElementById('bookingSyncIssueList');
+            list.replaceChildren();
+            const issues = result ? result.issues : [];
+            details.classList.toggle('hidden', issues.length === 0);
+            issues.forEach(issue => {
+                const item = document.createElement('li');
+                item.textContent = `แถว ${issue.row}: ${issue.code || ''} ${issue.name} (${issue.time}) - ${issue.reason}`;
+                list.appendChild(item);
+            });
+            status.className = error || issues.length ? 'text-amber-700' : 'text-emerald-700';
+            const updatedAt = lastScheduleUpdatedAt ? lastScheduleUpdatedAt.toLocaleString('th-TH') : '';
+            if (error) {
+                status.textContent = result
+                    ? `อัปเดตลงเวลาไม่สำเร็จ ใช้ข้อมูลล่าสุดเมื่อ ${updatedAt} กรุณาตรวจสอบการเข้าถึงชีตลงเวลา`
+                    : 'อ่านชีตลงเวลาไม่ได้ กำลังแสดงสถานะจากชีตสรุป กรุณาตรวจสอบการเข้าถึงชีตลงเวลา';
+            } else {
+                status.textContent = `ข้อมูลลงเวลา ${result.coveredTerms.join(', ')}: จับคู่ได้ ${result.matchedCount}/${result.totalCount} รายการ | ตรวจสอบล่าสุด ${updatedAt}`;
+            }
+        }
+
         async function loadData() {
+            if (loadingData) return;
+            loadingData = true;
+            document.getElementById('refreshDataBtn').disabled = true;
             const csvUrls = [
                 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnyAkoSHkzZLSppamsaqI8WyuwzGNwVT8a6zdXe9bCP8Ju5Z265rEsXq5MAqgHdHUcaw3m9JS4nSGX/pub?gid=486231050&single=true&output=csv"
             ];
@@ -422,32 +486,22 @@
             try {
                 document.getElementById('lastUpdate').innerText = "กำลังโหลดข้อมูล...";
                 
-                const fetchPromises = csvUrls.map(async (url) => {
-                    const response = await fetch(url);
-                    const csvText = await response.text();
-                    return new Promise((resolve) => {
-                        Papa.parse(csvText, {
-                            header: true,
-                            skipEmptyLines: true,
-                            complete: function(results) {
-                                resolve(results.data);
-                            }
-                        });
-                    });
-                });
-
-                const allResults = await Promise.all(fetchPromises);
-                let mergedData = [];
-                allResults.forEach(data => {
-                    mergedData = mergedData.concat(data);
-                });
+                const [courseResult, bookingResult] = await Promise.allSettled([
+                    Promise.all(csvUrls.map(url => fetchCsv(url, true))),
+                    fetchCsv(BOOKING_CSV_URL, false).then(rows => BookingSync.readSchedule(rows))
+                ]);
+                if (courseResult.status === 'rejected') throw courseResult.reason;
+                const mergedData = courseResult.value.flat();
+                if (!mergedData.length || !('รหัสวิชา' in mergedData[0] || 'รหัส' in mergedData[0])) {
+                    throw new Error('ไม่พบคอลัมน์รหัสวิชาในชีตสรุป');
+                }
                 
                 globalData = mergedData.map(row => {
-                    const id = row['รหัสวิชา'] || row['รหัส'] || '-';
-                    const name = row['ชื่อรายวิชา'] || row['รายวิชา'] || '-';
+                    const id = (row['รหัสวิชา'] || row['รหัส'] || '-').trim();
+                    const name = (row['ชื่อรายวิชา'] || row['รายวิชา'] || '-').trim();
                     
-                    const termRaw = row['ภาคการศึกษา'] || '';
-                    const yearRaw = row['ปีการศึกษา'] || '';
+                    const termRaw = (row['ภาคการศึกษา'] || '').trim();
+                    const yearRaw = (row['ปีการศึกษา'] || '').trim();
                     const termYear = (termRaw && yearRaw) ? `${termRaw}/${yearRaw}` : '-';
                     
                     const yearStr = row['ชั้นปี'] || '1';
@@ -487,12 +541,25 @@
                     return { id, name, year, instructor, upload, upload56, booking, presented, termYear, fileLink, fileLink56, isPro, rawCategory: proRaw.toString().trim() };
                 }).filter(item => item.id !== '-' && item.id !== 'จำนวน' && item.id !== 'ร้อยละ' && item.name !== '-'); 
                 
+                if (bookingResult.status === 'fulfilled') {
+                    lastSchedule = bookingResult.value;
+                    lastScheduleUpdatedAt = new Date();
+                }
+                const bookingMerge = lastSchedule ? BookingSync.merge(globalData, lastSchedule) : null;
+                if (bookingMerge) globalData = bookingMerge.data;
+                showBookingSyncStatus(bookingMerge, bookingResult.status === 'rejected');
                 document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
                 populateTermFilter(globalData);
                 applyFilters(); 
             } catch (error) {
                 console.error("Error fetching data:", error);
                 document.getElementById('lastUpdate').innerText = "เกิดข้อผิดพลาดในการดึงข้อมูล";
+                const status = document.getElementById('bookingSyncStatus');
+                status.className = 'text-amber-700';
+                status.textContent = 'อัปเดตข้อมูลไม่สำเร็จ กำลังแสดงข้อมูลเดิม กรุณาลองใหม่';
+            } finally {
+                loadingData = false;
+                document.getElementById('refreshDataBtn').disabled = false;
             }
         }
 
@@ -653,9 +720,11 @@
                     uploadContent56 = `<span class="inline-flex w-7 h-7 rounded-full bg-slate-100 text-slate-400 items-center justify-center" title="ยังไม่อัปโหลด มคอ.5-6"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
                 }
 
+                const bookingTitle = item.bookingSource === 'unverified' ? 'สถานะจากชีตสรุป: กรุณาตรวจสอบรายการที่จับคู่ไม่ได้' : item.bookingSource === 'schedule' ? 'ลงเวลาแล้ว (จากตารางลงเวลา)' : 'ลงเวลาแล้ว (จากชีตสรุป)';
                 const bookingBadge = item.booking
-                    ? `<span class="inline-flex w-7 h-7 rounded-full bg-blue-100 text-blue-600 items-center justify-center" title="ลงเวลาแล้ว"><i data-lucide="check" class="w-4 h-4"></i></span>`
+                    ? `<span class="inline-flex w-7 h-7 rounded-full bg-blue-100 text-blue-600 items-center justify-center" title="${bookingTitle}"><i data-lucide="check" class="w-4 h-4"></i></span>`
                     : `<span class="inline-flex w-7 h-7 rounded-full bg-slate-100 text-slate-400 items-center justify-center" title="ยังไม่ลงเวลา"><i data-lucide="minus" class="w-4 h-4"></i></span>`;
+                const bookingSlots = (item.bookingSlots || []).map(slot => `<div class="text-xs text-slate-500 mt-1 whitespace-nowrap">${escapeHtml(slot.date)}<br><span class="font-medium text-blue-700">${escapeHtml(slot.time)}</span></div>`).join('');
 
                 const presentBadge = item.presented
                     ? `<span class="inline-flex w-7 h-7 rounded-full bg-purple-100 text-purple-600 items-center justify-center" title="นำเสนอแล้ว"><i data-lucide="check" class="w-4 h-4"></i></span>`
@@ -693,7 +762,7 @@
                         <td class="px-4 py-3 text-center whitespace-nowrap">${item.year}</td>
                         <td class="px-4 py-3 whitespace-nowrap">${proBadge}</td>
                         <td class="px-4 py-3 whitespace-normal">${item.instructor}</td>
-                        <td class="px-4 py-3 text-center">${bookingBadge}</td>
+                        <td class="px-4 py-3 text-center">${bookingBadge}${bookingSlots}</td>
                         <td class="px-4 py-3 text-center">${presentBadge}</td>
                         <td class="px-4 py-3 text-center">${uploadContent}</td>
                         <td class="px-4 py-3 text-center">${uploadContent56}</td>
@@ -916,8 +985,16 @@
             });
         }
 
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+        }
+
+        document.getElementById('refreshDataBtn').addEventListener('click', loadData);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) loadData();
+        });
         loadData();
-        setInterval(loadData, 300000);
+        setInterval(loadData, AUTO_REFRESH_MS);
     </script>
 </body>
 </html>
