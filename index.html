@@ -49,6 +49,11 @@
         .filter-pill { background-color: white; color: #64748b; cursor: pointer; }
         .filter-pill.active-pill { background-color: #2563eb; color: white; }
         .filter-pill:hover:not(.active-pill) { background-color: #f8fafc; color: #334155; }
+
+        /* Tab Navigation */
+        .tab-nav { color: #64748b; background: transparent; cursor: pointer; }
+        .tab-nav.active { color: #2563eb; background: #eff6ff; }
+        .tab-nav:hover:not(.active) { color: #334155; background: #f8fafc; }
     </style>
 </head>
 <body class="text-slate-800 antialiased font-sans p-4 md:p-8">
@@ -92,6 +97,21 @@
             </a>
         </div>
     </header>
+
+    <!-- Tab Navigation -->
+    <div class="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit">
+        <button id="tabDashboard" onclick="switchTab('dashboard')" class="tab-nav active flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+            <span>Dashboard</span>
+        </button>
+        <button id="tabBooking" onclick="switchTab('booking')" class="tab-nav flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            <span>ลงเวลา</span>
+        </button>
+    </div>
+
+    <!-- Dashboard View -->
+    <div id="dashboardView">
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-8">
@@ -283,6 +303,32 @@
             อัปเดตข้อมูลล่าสุด: <span id="lastUpdate"></span> (อัปเดตอัตโนมัติทุก 5 นาที)
         </div>
     </div>
+    </div><!-- /dashboardView -->
+
+    <!-- Booking View -->
+    <div id="bookingView" class="hidden">
+        <div class="card overflow-hidden mb-8" style="height: calc(100vh - 220px); min-height: 560px;">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+                <h3 class="font-medium text-slate-800 flex items-center gap-2">
+                    <i data-lucide="clock" class="w-5 h-5 text-primary"></i>
+                    ลงเวลานำเสนอ
+                </h3>
+                <a href="https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/edit?gid=0#gid=0"
+                   target="_blank"
+                   class="flex items-center gap-2 text-sm font-medium text-primary hover:text-blue-700 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg transition">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    เปิดเพื่อแก้ไข
+                </a>
+            </div>
+            <iframe
+                src="https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/preview"
+                class="w-full"
+                style="height: calc(100% - 64px);"
+                frameborder="0"
+                allowfullscreen>
+            </iframe>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
@@ -293,6 +339,26 @@
     <script>
         const APP_VERSION = 'v1.0.0';
         const APP_RELEASE_DATE = '8 กรกฎาคม 2569';
+
+        // Tab switching
+        function switchTab(tab) {
+            const dashView = document.getElementById('dashboardView');
+            const bookView = document.getElementById('bookingView');
+            const tabDash = document.getElementById('tabDashboard');
+            const tabBook = document.getElementById('tabBooking');
+            if (tab === 'dashboard') {
+                dashView.classList.remove('hidden');
+                bookView.classList.add('hidden');
+                tabDash.classList.add('active');
+                tabBook.classList.remove('active');
+            } else {
+                dashView.classList.add('hidden');
+                bookView.classList.remove('hidden');
+                tabDash.classList.remove('active');
+                tabBook.classList.add('active');
+            }
+            lucide.createIcons();
+        }
 
         document.getElementById('currentYear').innerText = new Date().getFullYear();
         document.getElementById('versionBadge').innerText = APP_VERSION;
