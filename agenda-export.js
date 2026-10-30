@@ -1,6 +1,9 @@
 (function (root) {
     'use strict';
 
+    const SYSTEM_NAME = 'APCRIS';
+    const SYSTEM_NAME_TH = 'ระบบสารสนเทศการวิพากษ์รายวิชา';
+    const SYSTEM_NAME_EN = 'Course Review Information System';
     const libraries = new Map();
     const SOURCES = {
         canvas: 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
@@ -10,6 +13,8 @@
     const STYLE = `
         .ae-page,.ae-page *{box-sizing:border-box;letter-spacing:0}
         .ae-page{width:794px;height:1123px;padding:40px 42px 30px;background:#fff;color:#1e293b;font-family:Prompt,Tahoma,sans-serif;font-size:14px;line-height:1.6;display:flex;flex-direction:column;overflow:hidden}
+        .ae-system-name{font-size:20px;line-height:1.4;font-weight:600;color:#1d4ed8;margin:0 0 3px}
+        .ae-system-description{font-size:10px;line-height:1.6;color:#64748b;margin:0 0 10px}
         .ae-brand{font-size:13px;color:#475569;margin:0 0 6px}
         .ae-title{font-size:25px;line-height:1.4;font-weight:600;margin:0 0 8px;color:#172d50}
         .ae-term{font-size:13px;color:#475569;margin:0}
@@ -39,6 +44,8 @@
         .ae-page-number{text-align:right;white-space:nowrap;padding-left:12px}
         .ae-stale{color:#9a3412;font-size:10px;margin-top:4px}
         .ae-image{width:1080px;height:1528px;padding:52px 56px 38px;font-size:24px}
+        .ae-image .ae-system-name{font-size:30px;margin-bottom:4px}
+        .ae-image .ae-system-description{font-size:17px;margin-bottom:16px}
         .ae-image .ae-brand{font-size:22px;margin-bottom:10px}
         .ae-image .ae-title{font-size:36px;margin-bottom:14px}
         .ae-image .ae-term{font-size:21px}
@@ -94,7 +101,7 @@
 
     function filename(dayKey, kind, page = 1, pageCount = 1) {
         const date = /^\d{4}-\d{2}-\d{2}$/.test(dayKey) ? dayKey : 'meeting';
-        return `course-review-agenda-${date}${pageCount > 1 ? `-p${page}` : ''}.${kind === 'image' ? 'png' : 'pdf'}`;
+        return `${SYSTEM_NAME.toLowerCase()}-agenda-${date}${pageCount > 1 ? `-p${page}` : ''}.${kind === 'image' ? 'png' : 'pdf'}`;
     }
 
     function loadLibrary(key, available) {
@@ -120,11 +127,11 @@
         const qr = urls.length === 1 ? `<a class="ae-qr" href="${escape(urls[0])}"><img src="${qrImages.get(urls[0])}" alt="QR Code เข้าประชุม Teams"><span>เข้าประชุม Teams</span></a>` : '';
         const subtitle = urls.length > 1 ? 'ลิงก์ประชุมแยกตามรายวิชา' : urls.length ? 'Microsoft Teams' : 'ยังไม่มีลิงก์ประชุม';
         return `<section class="ae-page ${kind === 'image' ? 'ae-image' : ''}" data-export-day="${escape(day.key)}">
-            <header class="ae-header"><p class="ae-brand">สาขาวิชาสาธารณสุขชุมชน</p><h1 class="ae-title">กำหนดการประชุมวิพากษ์รายวิชา</h1><p class="ae-term">ภาคการศึกษา ${escape(snapshot.terms.join(', '))}</p></header>
+            <header class="ae-header"><p class="ae-system-name">${SYSTEM_NAME}</p><p class="ae-system-description">${SYSTEM_NAME_TH}<br>${SYSTEM_NAME_EN}</p><p class="ae-brand">สาขาวิชาสาธารณสุขชุมชน</p><h1 class="ae-title">กำหนดการประชุมวิพากษ์รายวิชา</h1><p class="ae-term">ภาคการศึกษา ${escape(snapshot.terms.join(', '))}</p></header>
             <div class="ae-day"><div class="ae-date"><h2>${escape(day.label)}${continuation ? ' (ต่อ)' : ''}</h2><p>${day.entries.length} รายวิชา / ${subtitle}</p></div>${qr}</div>
             ${snapshot.filters ? `<div class="ae-filters">ตัวกรอง: ${escape(snapshot.filters)}</div>` : ''}
             <div class="ae-content"><table class="ae-table">${kind === 'image' ? '<colgroup><col style="width:19%"><col style="width:81%"></colgroup><thead><tr><th>เวลา</th><th>รายวิชา / ผู้รับผิดชอบ</th></tr></thead>' : '<colgroup><col style="width:17%"><col style="width:43%"><col style="width:26%"><col style="width:14%"></colgroup><thead><tr><th>เวลา</th><th>รายวิชา / ชั้นปี</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th></tr></thead>'}<tbody></tbody></table></div>
-            <footer class="ae-footer"><div class="ae-footer-top"><span class="ae-footer-left">ข้อมูลลงเวลา ${escape(snapshot.updatedAt || '-')}<br>จัดทำ ${escape(snapshot.createdAt)} / ${escape(snapshot.version)}</span><span class="ae-page-number"></span></div>${snapshot.stale ? '<div class="ae-stale">ใช้ข้อมูลที่อ่านได้ล่าสุด เนื่องจากยังอัปเดตข้อมูลลงเวลาไม่ได้</div>' : ''}</footer>
+            <footer class="ae-footer"><div class="ae-footer-top"><span class="ae-footer-left">ข้อมูลลงเวลา ${escape(snapshot.updatedAt || '-')}<br>จัดทำ ${escape(snapshot.createdAt)} / ${SYSTEM_NAME} ${escape(snapshot.version)}</span><span class="ae-page-number"></span></div>${snapshot.stale ? '<div class="ae-stale">ใช้ข้อมูลที่อ่านได้ล่าสุด เนื่องจากยังอัปเดตข้อมูลลงเวลาไม่ได้</div>' : ''}</footer>
         </section>`;
     }
 
@@ -203,7 +210,7 @@
         const { stage, pages } = await layout(snapshot, 'pdf', signal);
         try {
             const pdf = new root.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
-            pdf.setProperties({ title: 'กำหนดการประชุมวิพากษ์รายวิชา', author: 'สาขาวิชาสาธารณสุขชุมชน', creator: 'Course Review Dashboard' });
+            pdf.setProperties({ title: `${SYSTEM_NAME} - กำหนดการประชุมวิพากษ์รายวิชา`, subject: SYSTEM_NAME_TH, author: 'สาขาวิชาสาธารณสุขชุมชน', creator: `${SYSTEM_NAME} - ${SYSTEM_NAME_EN}` });
             for (let index = 0; index < pages.length; index++) {
                 progress?.(`กำลังสร้าง PDF หน้า ${index + 1}/${pages.length}`);
                 const { element } = pages[index];
@@ -222,7 +229,7 @@
             const firstDay = pages[0].day.key;
             const lastDay = pages[pages.length - 1].day.key;
             const name = firstDay !== lastDay && [firstDay, lastDay].every(key => /^\d{4}-\d{2}-\d{2}$/.test(key))
-                ? `course-review-agenda-${firstDay}-to-${lastDay}.pdf` : filename(firstDay, 'pdf');
+                ? `${SYSTEM_NAME.toLowerCase()}-agenda-${firstDay}-to-${lastDay}.pdf` : filename(firstDay, 'pdf');
             return { blob: pdf.output('blob'), filename: name, pageCount: pages.length };
         } finally { stage.remove(); }
     }

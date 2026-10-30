@@ -40,9 +40,9 @@ test('exported rows escape source text and do not emit executable URLs', () => {
 });
 
 test('image names remain safe and distinguish continuation pages', () => {
-    assert.equal(filename('2026-11-02', 'image'), 'course-review-agenda-2026-11-02.png');
-    assert.equal(filename('2026-11-02', 'image', 2, 3), 'course-review-agenda-2026-11-02-p2.png');
-    assert.equal(filename('../../etc', 'pdf'), 'course-review-agenda-meeting.pdf');
+    assert.equal(filename('2026-11-02', 'image'), 'apcris-agenda-2026-11-02.png');
+    assert.equal(filename('2026-11-02', 'image', 2, 3), 'apcris-agenda-2026-11-02-p2.png');
+    assert.equal(filename('../../etc', 'pdf'), 'apcris-agenda-meeting.pdf');
 });
 
 test('export rejects non-HTTPS URLs and authentication embedded in URLs', () => {
@@ -53,7 +53,16 @@ test('export rejects non-HTTPS URLs and authentication embedded in URLs', () => 
 
 test('the release and footer badge use one updated version and the current release date', () => {
     const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
-    assert.match(html, /APP_VERSION = 'v1\.2\.0'/);
+    assert.match(html, /APP_VERSION = 'v1\.2\.1'/);
     assert.match(html, /APP_RELEASE_DATE = '30 ตุลาคม 2569'/);
     assert.match(html, /getElementById\('footerVersion'\)\.innerText = APP_VERSION/);
+});
+
+test('the page title, visible heading and footer identify APCRIS with its Thai and English names', () => {
+    const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
+    assert.match(html, /<title>APCRIS \| ระบบสารสนเทศการวิพากษ์รายวิชา<\/title>/);
+    assert.match(html, /<h1\b[^>]*>[\s\S]*?\bAPCRIS\s*<\/h1>/);
+    assert.match(html, /<p\b[^>]*>ระบบสารสนเทศการวิพากษ์รายวิชา<\/p>/);
+    assert.match(html, /<p\b[^>]*>Course Review Information System<\/p>/);
+    assert.match(html, /<footer\b[^>]*>[\s\S]*?APCRIS \| ระบบสารสนเทศการวิพากษ์รายวิชา/);
 });

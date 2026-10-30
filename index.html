@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Academic Dashboard - ระบบติดตามการวิพากษ์รายวิชา</title>
+    <title>APCRIS | ระบบสารสนเทศการวิพากษ์รายวิชา</title>
     
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -78,13 +78,14 @@
 
     <!-- Header -->
     <header class="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
+        <div class="min-w-0">
             <h1 class="text-2xl md:text-3xl font-semibold text-slate-900 flex items-center gap-2">
                 <i data-lucide="layout-dashboard" class="text-primary w-8 h-8 shrink-0"></i>
-                ระบบติดตามการวิพากษ์รายวิชา
+                APCRIS
             </h1>
-            <h2 class="text-base md:text-lg text-primary font-medium mt-1">สาขาวิชาสาธารณสุขชุมชน</h2>
-            <p class="text-slate-500 text-sm md:text-base mt-0.5">แดชบอร์ดสรุปสถานะการอัปโหลด มคอ. และการลงเวลานำเสนอ</p>
+            <p class="text-base font-medium text-slate-800 mt-1">ระบบสารสนเทศการวิพากษ์รายวิชา</p>
+            <p class="text-sm text-slate-500 mt-0.5">Course Review Information System</p>
+            <h2 class="text-sm text-primary font-medium mt-2">สาขาวิชาสาธารณสุขชุมชน</h2>
             <div class="flex items-center gap-2 mt-2">
                 <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full font-mono font-semibold" id="versionBadge"></span>
                 <span class="text-xs text-slate-400" id="releaseDateLabel"></span>
@@ -432,14 +433,14 @@
 
     <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
-        <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา. All rights reserved.</p>
+        <p>&copy; <span id="currentYear"></span> APCRIS | ระบบสารสนเทศการวิพากษ์รายวิชา. All rights reserved.</p>
         <p class="mt-1.5">Developed by <span class="font-medium text-slate-700">Anuwat Pengput</span> &middot; <span class="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded" id="footerVersion"></span></p>
     </footer>
 
     <script src="booking-sync.js"></script>
     <script src="agenda-export.js"></script>
     <script>
-        const APP_VERSION = 'v1.2.0';
+        const APP_VERSION = 'v1.2.1';
         const APP_RELEASE_DATE = '30 ตุลาคม 2569';
 
         // Tab switching
@@ -960,7 +961,7 @@
         document.getElementById('shareAgendaImageBtn').addEventListener('click', async () => {
             const page = imageExportPages[Number(document.getElementById('agendaImagePageSelect').value)];
             if (!page) return;
-            try { await navigator.share({ files: [new File([page.blob], page.filename, { type: 'image/png' })], title: 'กำหนดการประชุมวิพากษ์รายวิชา' }); }
+            try { await navigator.share({ files: [new File([page.blob], page.filename, { type: 'image/png' })], title: 'APCRIS - กำหนดการประชุมวิพากษ์รายวิชา' }); }
             catch (error) { if (error.name !== 'AbortError') document.getElementById('agendaImageProgress').textContent = 'แชร์รูปไม่ได้ กรุณาดาวน์โหลด PNG'; }
         });
 
