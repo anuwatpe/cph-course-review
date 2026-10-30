@@ -61,6 +61,8 @@
         .agenda-day + .agenda-day { margin-top: 1.5rem; }
         .agenda-action { display: inline-flex; align-items: center; justify-content: center; gap: .35rem; min-height: 2.25rem; padding: .35rem .6rem; border: 1px solid #cbd5e1; border-radius: .375rem; font-size: .75rem; color: #334155; background: white; }
         .agenda-action:hover { background: #eff6ff; border-color: #93c5fd; }
+        .agenda-export-dialog { width: min(52rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); padding: 0; margin: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #1e293b; }
+        .agenda-export-dialog::backdrop { background: rgba(15, 23, 42, .55); }
         @media (max-width: 1023px) {
             .agenda-grid { grid-template-columns: 5.5rem minmax(0, 1fr); gap: .5rem .75rem; }
             .agenda-columns { display: none; }
@@ -343,10 +345,19 @@
                 <h2 class="text-xl font-medium text-slate-900">กำหนดการประชุมวิพากษ์รายวิชา</h2>
                 <p id="scheduleSummary" class="text-sm text-slate-500 mt-1" aria-live="polite"></p>
             </div>
-            <a href="https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-primary border border-blue-200 rounded-md px-3 py-2 bg-white hover:bg-blue-50">
-                <i data-lucide="square-pen" class="w-4 h-4"></i>ลงเวลา / แก้ไขรายการ
-            </a>
+            <div class="flex flex-wrap gap-2">
+                <button id="exportSchedulePdfBtn" type="button" disabled class="inline-flex items-center gap-2 text-sm bg-primary hover:bg-blue-700 text-white rounded-md px-3 py-2 disabled:opacity-40 disabled:cursor-wait">
+                    <i data-lucide="file-down" class="w-4 h-4"></i>ส่งออก PDF
+                </button>
+                <button id="exportScheduleImageBtn" type="button" disabled class="inline-flex items-center gap-2 text-sm text-primary border border-blue-200 rounded-md px-3 py-2 bg-white hover:bg-blue-50 disabled:opacity-40 disabled:cursor-wait">
+                    <i data-lucide="image-down" class="w-4 h-4"></i>รูปภาพ PNG
+                </button>
+                <a href="https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 text-sm text-slate-600 border border-slate-200 rounded-md px-3 py-2 bg-white hover:bg-slate-50">
+                    <i data-lucide="square-pen" class="w-4 h-4"></i>ลงเวลา / แก้ไขรายการ
+                </a>
+            </div>
         </div>
+        <p id="agendaExportStatus" class="text-sm text-slate-500 mb-3 empty:hidden" role="status" aria-live="polite"></p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,1fr)_12rem_auto] gap-3 p-4 bg-white border-y border-slate-200 mb-5 items-end">
             <label class="block min-w-0 text-sm text-slate-600">
                 <span class="block mb-1.5">ค้นหารายวิชา / อาจารย์</span>
@@ -398,6 +409,27 @@
         </div>
     </div>
 
+    <dialog id="agendaImageDialog" class="agenda-export-dialog" aria-labelledby="agendaImageDialogTitle">
+        <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
+            <h2 id="agendaImageDialogTitle" class="text-lg font-medium">รูปภาพกำหนดการ</h2>
+            <button id="closeAgendaImageDialog" type="button" title="ปิดหน้าต่างรูปภาพ" aria-label="ปิดหน้าต่างรูปภาพ" class="w-10 h-10 inline-flex items-center justify-center rounded-md hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div class="p-5">
+            <label class="block text-sm text-slate-600 mb-4">วันประชุม / หน้าเอกสาร
+                <select id="agendaImagePageSelect" disabled class="mt-1.5 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5"></select>
+            </label>
+            <p id="agendaImageProgress" class="text-sm text-slate-500 mb-3" role="status" aria-live="polite"></p>
+            <div class="bg-slate-100 border border-slate-200 overflow-auto max-h-[55vh] min-h-[15rem]">
+                <img id="agendaImagePreview" alt="ตัวอย่างรูปภาพกำหนดการ" class="hidden w-full h-auto">
+            </div>
+            <p id="agendaImageMeta" class="text-xs text-slate-500 mt-3"></p>
+        </div>
+        <div class="flex flex-wrap items-center justify-end gap-2 px-5 py-4 border-t border-slate-200">
+            <button id="shareAgendaImageBtn" type="button" class="hidden inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2.5 text-sm"><i data-lucide="share-2" class="w-4 h-4"></i>แชร์รูป</button>
+            <button id="downloadAgendaImageBtn" type="button" disabled class="inline-flex items-center gap-2 bg-primary hover:bg-blue-700 text-white rounded-md px-4 py-2.5 text-sm disabled:opacity-40"><i data-lucide="download" class="w-4 h-4"></i>ดาวน์โหลด PNG</button>
+        </div>
+    </dialog>
+
     <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
         <p>&copy; <span id="currentYear"></span> ระบบติดตามการวิพากษ์รายวิชา. All rights reserved.</p>
@@ -405,9 +437,10 @@
     </footer>
 
     <script src="booking-sync.js"></script>
+    <script src="agenda-export.js"></script>
     <script>
-        const APP_VERSION = 'v1.1.0';
-        const APP_RELEASE_DATE = '30 ตุลาคม 2568';
+        const APP_VERSION = 'v1.2.0';
+        const APP_RELEASE_DATE = '30 ตุลาคม 2569';
 
         // Tab switching
         function switchTab(tab) {
@@ -443,6 +476,10 @@
         let lastScheduleUpdatedAt = null;
         let lastBookingMerge = null;
         let bookingReadFailed = false;
+        let visibleScheduleGroups = [];
+        let exportingAgenda = false;
+        let imageExportAbort = null;
+        let imageExportPages = [];
         const BOOKING_EDIT_URL = 'https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/edit?gid=0';
 
         const multiSelectBtn = document.getElementById('multiSelectBtn');
@@ -532,6 +569,7 @@
             if (loadingData) return;
             loadingData = true;
             document.getElementById('refreshDataBtn').disabled = true;
+            updateAgendaExportButtons();
             const csvUrls = [
                 "https://docs.google.com/spreadsheets/d/e/2PACX-1vRnyAkoSHkzZLSppamsaqI8WyuwzGNwVT8a6zdXe9bCP8Ju5Z265rEsXq5MAqgHdHUcaw3m9JS4nSGX/pub?gid=486231050&single=true&output=csv"
             ];
@@ -617,6 +655,7 @@
             } finally {
                 loadingData = false;
                 document.getElementById('refreshDataBtn').disabled = false;
+                updateAgendaExportButtons();
             }
         }
 
@@ -735,6 +774,8 @@
             const container = document.getElementById('scheduleDays');
             const summary = document.getElementById('scheduleSummary');
             if (!lastBookingMerge) {
+                visibleScheduleGroups = [];
+                updateAgendaExportButtons();
                 summary.textContent = '';
                 container.innerHTML = `<p class="py-12 text-center text-slate-500 bg-white border-y border-slate-200">${bookingReadFailed ? 'ยังไม่สามารถอ่านกำหนดการประชุมได้' : 'กำลังโหลดกำหนดการ...'}</p>`;
                 return;
@@ -757,6 +798,8 @@
                 })
             })).filter(day => day.entries.length);
             const count = filtered.reduce((total, day) => total + day.entries.length, 0);
+            visibleScheduleGroups = filtered;
+            updateAgendaExportButtons();
             summary.textContent = `${count} รายการ ใน ${filtered.length} วัน`;
             document.getElementById('clearScheduleFiltersBtn').disabled = !query && dayFilter.value === 'all' && status === 'all';
             if (!count) {
@@ -797,6 +840,129 @@
                 <div class="agenda-documents flex flex-wrap items-center gap-1.5">${documents || '<span class="text-xs text-slate-400">ไม่มีลิงก์เอกสาร</span>'}${meetingLink}<a href="${escapeHtml(editLink)}" target="_blank" rel="noopener noreferrer" class="agenda-action" title="แก้ไขการลงเวลา: ${escapeHtml(name)}" aria-label="แก้ไขการลงเวลา: ${escapeHtml(name)}"><i data-lucide="square-pen" class="w-4 h-4"></i></a></div>
             </article>`;
         }
+
+        function updateAgendaExportButtons() {
+            ['exportSchedulePdfBtn', 'exportScheduleImageBtn'].forEach(id => {
+                const button = document.getElementById(id);
+                button.disabled = loadingData || exportingAgenda || !visibleScheduleGroups.length;
+                button.setAttribute('aria-busy', String(exportingAgenda));
+            });
+        }
+
+        function agendaExportSnapshot() {
+            const groups = structuredClone(visibleScheduleGroups);
+            const terms = [...new Set(groups.flatMap(day => day.entries.flatMap(entry => entry.course
+                ? [entry.course.termYear] : entry.terms.filter(term => activeTerms.includes(term)))))].sort((a, b) => {
+                const [ta, ya] = a.split('/').map(Number); const [tb, yb] = b.split('/').map(Number);
+                return ya - yb || ta - tb;
+            });
+            const filters = [];
+            const query = document.getElementById('scheduleSearchInput').value.trim();
+            if (query) filters.push(`ค้นหา ${query.slice(0, 100)}`);
+            const day = document.getElementById('scheduleDayFilter');
+            if (day.value !== 'all') filters.push(day.selectedOptions[0].textContent);
+            const status = document.getElementById('scheduleStatusFilter');
+            if (status.value !== 'all') filters.push(status.selectedOptions[0].textContent);
+            const formatTime = date => date?.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) || '';
+            return { groups, terms, filters: filters.join(' / '), updatedAt: formatTime(lastScheduleUpdatedAt),
+                createdAt: formatTime(new Date()), stale: bookingReadFailed, version: APP_VERSION };
+        }
+
+        function setAgendaExportStatus(message, error = false) {
+            const status = document.getElementById('agendaExportStatus');
+            status.textContent = message;
+            status.className = `text-sm mb-3 empty:hidden ${error ? 'text-rose-700' : 'text-slate-500'}`;
+        }
+
+        function downloadAgendaFile(blob, filename, existingUrl) {
+            const url = existingUrl || URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url; link.download = filename;
+            document.body.appendChild(link); link.click(); link.remove();
+            if (!existingUrl) setTimeout(() => URL.revokeObjectURL(url), 10000);
+        }
+
+        async function exportSchedulePdf() {
+            if (exportingAgenda || !visibleScheduleGroups.length) return;
+            const snapshot = agendaExportSnapshot();
+            exportingAgenda = true; updateAgendaExportButtons();
+            setAgendaExportStatus('กำลังจัดหน้ากำหนดการ PDF...');
+            try {
+                const result = await AgendaExport.createPdf(snapshot, message => setAgendaExportStatus(message));
+                downloadAgendaFile(result.blob, result.filename);
+                setAgendaExportStatus(`สร้าง PDF แล้ว ${result.pageCount} หน้า`);
+            } catch (error) { setAgendaExportStatus(error.message || 'ส่งออก PDF ไม่สำเร็จ', true); }
+            finally { exportingAgenda = false; updateAgendaExportButtons(); }
+        }
+
+        async function openScheduleImageExport() {
+            if (exportingAgenda || !visibleScheduleGroups.length) return;
+            const snapshot = agendaExportSnapshot();
+            const dialog = document.getElementById('agendaImageDialog');
+            const controller = new AbortController(); imageExportAbort = controller;
+            exportingAgenda = true; updateAgendaExportButtons();
+            document.getElementById('agendaImageProgress').textContent = 'กำลังจัดหน้ารูปภาพ...';
+            document.getElementById('agendaImagePageSelect').replaceChildren(new Option('กำลังสร้างรูปภาพ...', ''));
+            dialog.showModal();
+            try {
+                const pages = await AgendaExport.createImages(snapshot, message => {
+                    if (!controller.signal.aborted) document.getElementById('agendaImageProgress').textContent = message;
+                }, controller.signal);
+                if (controller.signal.aborted) return;
+                imageExportPages = pages.map(page => ({ ...page, url: URL.createObjectURL(page.blob) }));
+                const select = document.getElementById('agendaImagePageSelect');
+                select.replaceChildren();
+                imageExportPages.forEach((page, index) => select.add(new Option(page.label, String(index))));
+                select.disabled = false;
+                document.getElementById('agendaImageProgress').textContent = `${pages.length} รูปภาพ`;
+                showAgendaImagePage();
+            } catch (error) {
+                if (error.name !== 'AbortError') document.getElementById('agendaImageProgress').textContent = error.message || 'สร้างรูปภาพไม่สำเร็จ';
+            } finally {
+                if (imageExportAbort === controller) { exportingAgenda = false; updateAgendaExportButtons(); }
+            }
+        }
+
+        function showAgendaImagePage() {
+            const page = imageExportPages[Number(document.getElementById('agendaImagePageSelect').value)];
+            if (!page) return;
+            const image = document.getElementById('agendaImagePreview');
+            image.src = page.url; image.alt = page.label; image.classList.remove('hidden');
+            document.getElementById('agendaImageMeta').textContent = `${page.width} x ${page.height} px / ${(page.blob.size / 1024).toFixed(0)} KB`;
+            document.getElementById('downloadAgendaImageBtn').disabled = false;
+            const file = new File([page.blob], page.filename, { type: 'image/png' });
+            let canShare = false;
+            try { canShare = Boolean(navigator.share && navigator.canShare?.({ files: [file] })); } catch (_) { /* Downloads remain available. */ }
+            document.getElementById('shareAgendaImageBtn').classList.toggle('hidden', !canShare);
+        }
+
+        document.getElementById('exportSchedulePdfBtn').addEventListener('click', exportSchedulePdf);
+        document.getElementById('exportScheduleImageBtn').addEventListener('click', openScheduleImageExport);
+        document.getElementById('agendaImagePageSelect').addEventListener('change', showAgendaImagePage);
+        document.getElementById('closeAgendaImageDialog').addEventListener('click', () => document.getElementById('agendaImageDialog').close());
+        document.getElementById('agendaImageDialog').addEventListener('click', event => {
+            if (event.target === event.currentTarget) event.currentTarget.close();
+        });
+        document.getElementById('agendaImageDialog').addEventListener('close', () => {
+            imageExportAbort?.abort(); imageExportAbort = null;
+            imageExportPages.forEach(page => URL.revokeObjectURL(page.url)); imageExportPages = [];
+            const preview = document.getElementById('agendaImagePreview'); preview.removeAttribute('src'); preview.classList.add('hidden');
+            document.getElementById('agendaImagePageSelect').disabled = true;
+            document.getElementById('downloadAgendaImageBtn').disabled = true;
+            document.getElementById('shareAgendaImageBtn').classList.add('hidden');
+            document.getElementById('agendaImageMeta').textContent = '';
+            exportingAgenda = false; updateAgendaExportButtons();
+        });
+        document.getElementById('downloadAgendaImageBtn').addEventListener('click', () => {
+            const page = imageExportPages[Number(document.getElementById('agendaImagePageSelect').value)];
+            if (page) downloadAgendaFile(page.blob, page.filename, page.url);
+        });
+        document.getElementById('shareAgendaImageBtn').addEventListener('click', async () => {
+            const page = imageExportPages[Number(document.getElementById('agendaImagePageSelect').value)];
+            if (!page) return;
+            try { await navigator.share({ files: [new File([page.blob], page.filename, { type: 'image/png' })], title: 'กำหนดการประชุมวิพากษ์รายวิชา' }); }
+            catch (error) { if (error.name !== 'AbortError') document.getElementById('agendaImageProgress').textContent = 'แชร์รูปไม่ได้ กรุณาดาวน์โหลด PNG'; }
+        });
 
         document.getElementById('scheduleSearchInput').addEventListener('input', renderSchedule);
         document.querySelector('[role="tablist"]').addEventListener('keydown', event => {
