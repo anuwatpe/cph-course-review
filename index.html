@@ -151,21 +151,21 @@
 
     <!-- Tab Navigation -->
     <div class="flex gap-1 mb-6 bg-white rounded-xl shadow-sm border border-slate-100 p-1 w-fit max-w-full overflow-x-auto" role="tablist" aria-label="มุมมองรายวิชา">
-        <button id="tabDashboard" onclick="switchTab('dashboard')" role="tab" aria-selected="true" aria-controls="dashboardView" class="tab-nav active shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+        <a id="tabDashboard" href="#dashboard" role="tab" aria-selected="true" aria-controls="dashboardView" class="tab-nav active shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
             <span>Dashboard</span>
-        </button>
-        <button id="tabSchedule" onclick="switchTab('schedule')" role="tab" aria-selected="false" aria-controls="scheduleView" tabindex="-1" title="กำหนดการประชุม" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+        </a>
+        <a id="tabSchedule" href="#schedule" role="tab" aria-selected="false" aria-controls="scheduleView" tabindex="-1" title="กำหนดการประชุม" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
             <i data-lucide="calendar-days" class="w-4 h-4"></i>
             <span>กำหนดการ</span>
-        </button>
-        <button id="tabBooking" onclick="switchTab('booking')" role="tab" aria-selected="false" aria-controls="bookingView" tabindex="-1" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+        </a>
+        <a id="tabBooking" href="#booking" role="tab" aria-selected="false" aria-controls="bookingView" tabindex="-1" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
             <i data-lucide="clock" class="w-4 h-4"></i>
             <span>ลงเวลา</span>
-        </button>
-        <button id="tabReport" onclick="switchTab('report')" role="tab" aria-selected="false" aria-controls="reportView" tabindex="-1" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+        </a>
+        <a id="tabReport" href="#report" role="tab" aria-selected="false" aria-controls="reportView" tabindex="-1" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
             <i data-lucide="chart-no-axes-combined" class="w-4 h-4"></i><span>รายงาน</span>
-        </button>
+        </a>
     </div>
 
     <div class="mb-6 text-sm text-slate-600" aria-live="polite">
@@ -522,23 +522,31 @@
     </footer>
 
     <script src="booking-sync.js"></script>
-    <script src="agenda-export.js?v=1.4.4"></script>
-    <script src="presentation-report.js?v=1.4.4"></script>
+    <script src="agenda-export.js?v=1.4.5"></script>
+    <script src="presentation-report.js?v=1.4.5"></script>
     <script>
-        const APP_VERSION = 'v1.4.4';
+        const APP_VERSION = 'v1.4.5';
         const APP_RELEASE_DATE = '3 พฤศจิกายน 2569';
 
-        // Tab switching
-        function switchTab(tab) {
-            const tabs = { dashboard: 'tabDashboard', schedule: 'tabSchedule', booking: 'tabBooking', report: 'tabReport' };
-            if (!tabs[tab]) return;
+        const tabs = { dashboard: 'tabDashboard', schedule: 'tabSchedule', booking: 'tabBooking', report: 'tabReport' };
+        const tabList = document.querySelector('[role="tablist"]');
+        let activeTab = null;
+
+        function syncTabFromUrl() {
+            const hash = location.hash.slice(1);
+            const tab = Object.hasOwn(tabs, hash) ? hash : 'dashboard';
+            if (activeTab === tab) return;
+            activeTab = tab;
             Object.entries(tabs).forEach(([view, id]) => {
                 document.getElementById(`${view}View`).classList.toggle('hidden', view !== tab);
-                const button = document.getElementById(id);
-                button.classList.toggle('active', view === tab);
-                button.setAttribute('aria-selected', String(view === tab));
-                button.tabIndex = view === tab ? 0 : -1;
+                const link = document.getElementById(id);
+                link.classList.toggle('active', view === tab);
+                link.setAttribute('aria-selected', String(view === tab));
+                link.tabIndex = view === tab ? 0 : -1;
             });
+            const selected = document.getElementById(tabs[tab]).getBoundingClientRect();
+            const strip = tabList.getBoundingClientRect();
+            tabList.scrollLeft += selected.left < strip.left ? selected.left - strip.left : Math.max(0, selected.right - strip.right);
             if (tab === 'report') renderReport();
             if (tab !== 'booking') loadData();
             lucide.createIcons();
@@ -1197,15 +1205,22 @@
         });
 
         document.getElementById('scheduleSearchInput').addEventListener('input', renderSchedule);
-        document.querySelector('[role="tablist"]').addEventListener('keydown', event => {
-            const tabs = [...document.querySelectorAll('[role="tab"]')];
-            const index = tabs.indexOf(event.target);
-            if (index < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        tabList.addEventListener('click', event => {
+            const link = event.target.closest('a[role="tab"]');
+            if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
             event.preventDefault();
-            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
-                : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
-            tabs[next].click();
-            tabs[next].focus();
+            if (location.hash !== link.hash) history.pushState(null, '', link.hash);
+            syncTabFromUrl();
+        });
+        tabList.addEventListener('keydown', event => {
+            const links = [...tabList.querySelectorAll('[role="tab"]')];
+            const index = links.indexOf(event.target);
+            if (index < 0 || !['ArrowLeft', 'ArrowRight', 'Home', 'End', ' '].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === ' ' ? index : event.key === 'Home' ? 0 : event.key === 'End' ? links.length - 1
+                : (index + (event.key === 'ArrowRight' ? 1 : -1) + links.length) % links.length;
+            links[next].click();
+            links[next].focus();
         });
         document.getElementById('scheduleDayFilter').addEventListener('change', renderSchedule);
         document.getElementById('scheduleStatusFilter').addEventListener('change', renderSchedule);
@@ -1541,7 +1556,10 @@
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) loadData();
         });
-        loadData();
+        window.addEventListener('popstate', syncTabFromUrl);
+        window.addEventListener('hashchange', syncTabFromUrl);
+        syncTabFromUrl();
+        if (activeTab === 'booking') loadData();
         setInterval(loadData, AUTO_REFRESH_MS);
     </script>
 </body>

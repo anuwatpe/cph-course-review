@@ -58,7 +58,7 @@ test('report images reject empty detail lists before loading browser libraries',
 test('the release and footer badge use one updated version and the current release date', () => {
     const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
     const version = html.match(/APP_VERSION = 'v([\d.]+)'/)[1];
-    assert.equal(version, '1.4.4');
+    assert.equal(version, '1.4.5');
     assert.ok(html.includes(`src="agenda-export.js?v=${version}"`));
     assert.match(html, /APP_RELEASE_DATE = '3 พฤศจิกายน 2569'/);
     assert.match(html, /getElementById\('footerVersion'\)\.innerText = APP_VERSION/);
