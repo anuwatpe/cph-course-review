@@ -466,8 +466,19 @@
         <p id="reportDataStatus" class="text-sm text-slate-600 my-3" role="status"></p>
         <div id="reportSummary" class="bg-white p-4 border-y border-slate-200"></div>
         <div id="reportDetails" class="mt-5 hidden">
-            <div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="!m-0">รายละเอียดรายวิชา <span id="reportRowCount" class="text-sm font-normal text-slate-500"></span></h3>
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="!m-0">รายละเอียดรายวิชา <span id="reportRowCount" class="text-sm font-normal text-slate-500" role="status"></span></h3>
                 <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="reportFollowUp" class="accent-blue-600">เฉพาะงานที่ต้องติดตาม</label>
+            </div>
+            <div class="flex flex-wrap items-end gap-3 bg-white border-t border-slate-200 px-4 py-3">
+                <label class="text-sm text-slate-600">สถานะนำเสนอ<select id="reportPresentationStatus" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2">
+                    <option value="all">ทั้งหมด</option><option value="presented">นำเสนอแล้ว</option><option value="scheduled">นัดแล้ว รอนำเสนอ</option><option value="unscheduled">ยังไม่พบการลงเวลา</option><option value="review">ตรวจสอบข้อมูล</option>
+                </select></label>
+                <label class="text-sm text-slate-600">สถานะเอกสาร<select id="reportDocumentStatus" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2">
+                    <option value="all">ทั้งหมด</option><option value="complete">ส่งครบ</option><option value="partial">ส่งบางส่วน</option><option value="missing">ยังไม่พบเอกสาร</option>
+                </select></label>
+                <label class="text-sm text-slate-600">เรียงตาม<select id="reportSort" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2">
+                    <option value="course">เทอม / ชั้นปี / รหัสวิชา</option><option value="presentation">สถานะนำเสนอ (ค้างก่อน)</option><option value="documents">สถานะเอกสาร (ค้างก่อน)</option>
+                </select></label>
             </div>
             <div class="overflow-x-auto bg-white border-y border-slate-200" tabindex="0" aria-label="ตารางรายละเอียดรายวิชา"><table id="reportTable" class="pr-table min-w-[650px]"></table></div>
         </div>
@@ -502,9 +513,9 @@
 
     <script src="booking-sync.js"></script>
     <script src="agenda-export.js"></script>
-    <script src="presentation-report.js?v=1.4.2"></script>
+    <script src="presentation-report.js?v=1.4.3"></script>
     <script>
-        const APP_VERSION = 'v1.4.2';
+        const APP_VERSION = 'v1.4.3';
         const APP_RELEASE_DATE = '3 พฤศจิกายน 2569';
 
         // Tab switching
@@ -840,10 +851,28 @@
         }
 
         function reportModel() {
-            if (window.PresentationReport?.documentScopeVersion !== 1) return null;
+            if (window.PresentationReport?.reportApiVersion !== 2) return null;
             return PresentationReport.build(globalData, { mode: document.querySelector('[name="reportMode"]:checked').value,
                 term: document.getElementById('reportTerm').value, year: document.getElementById('reportYear').value,
                 documentScope: document.getElementById('reportDocumentScope').value }, lastBookingMerge?.issues || []);
+        }
+
+        function reportDetailRows(report) {
+            return report ? PresentationReport.selectRows(report, {
+                presentation: document.getElementById('reportPresentationStatus').value,
+                documents: document.getElementById('reportDocumentStatus').value,
+                order: document.getElementById('reportSort').value,
+                followUp: document.getElementById('reportFollowUp').checked
+            }) : [];
+        }
+
+        function reportPdfSubtitle(report, rows) {
+            const filters = [['reportPresentationStatus', 'นำเสนอ'], ['reportDocumentStatus', 'เอกสาร']].flatMap(([id, label]) => {
+                const select = document.getElementById(id);
+                return select.value === 'all' ? [] : [`${label}: ${select.selectedOptions[0].text}`];
+            });
+            if (document.getElementById('reportFollowUp').checked) filters.push('เฉพาะงานที่ต้องติดตาม');
+            return filters.length ? `${report.subtitle} / รายละเอียด ${rows.length}/${report.rows.length} วิชา / ${filters.join(' / ')}` : report.subtitle;
         }
 
         function reportTime(date) {
@@ -862,7 +891,7 @@
 
         function renderReport() {
             if (document.getElementById('reportView').classList.contains('hidden')) return;
-            if (window.PresentationReport?.documentScopeVersion !== 1) {
+            if (window.PresentationReport?.reportApiVersion !== 2) {
                 document.querySelectorAll('#reportView input, #reportView select').forEach(control => { control.disabled = true; });
                 document.getElementById('exportReportPdfBtn').disabled = true;
                 document.getElementById('reportDetails').classList.add('hidden');
@@ -883,33 +912,38 @@
             document.getElementById('reportTermLabel').classList.toggle('hidden', comparison);
             document.getElementById('reportYearLabel').classList.toggle('hidden', !comparison);
             document.getElementById('reportDataStatus').textContent = [reportDataLabel(), reportWarning()].filter(Boolean).join(' | ');
-            document.getElementById('exportReportPdfBtn').disabled = exportingReport || !report?.rows.length;
+            const documentStatus = document.getElementById('reportDocumentStatus');
+            const partialOption = documentStatus.querySelector('[value="partial"]');
+            partialOption.hidden = partialOption.disabled = report?.documentScope !== 'all';
+            if (partialOption.disabled && documentStatus.value === 'partial') documentStatus.value = 'all';
+            const rows = reportDetailRows(report);
+            document.getElementById('exportReportPdfBtn').disabled = exportingReport || !rows.length;
             document.getElementById('reportSummary').innerHTML = report?.rows.length ? PresentationReport.summaryHtml(report) : '<p class="pr-note">ยังไม่มีข้อมูลรายวิชาสำหรับรายงาน</p>';
             document.getElementById('reportDetails').classList.toggle('hidden', !report?.rows.length);
             if (!report?.rows.length) return;
-            const rows = document.getElementById('reportFollowUp').checked ? report.rows.filter(row => PresentationReport.needsFollowUp(row, report.documentScope)) : report.rows;
             document.getElementById('reportRowCount').textContent = `(${rows.length}/${report.rows.length})`;
-            document.getElementById('reportTable').innerHTML = PresentationReport.tableHead + `<tbody>${rows.length ? rows.map(row => PresentationReport.rowHtml(row, report.documentScope)).join('') : '<tr><td colspan="4">ไม่พบรายการที่ต้องติดตาม</td></tr>'}</tbody>`;
+            document.getElementById('reportTable').innerHTML = PresentationReport.tableHead + `<tbody>${rows.length ? rows.map(row => PresentationReport.rowHtml(row, report.documentScope)).join('') : '<tr><td colspan="4">ไม่พบรายวิชาที่ตรงกับตัวกรอง</td></tr>'}</tbody>`;
         }
 
         async function exportPresentationPdf() {
             const report = reportModel();
-            if (exportingReport || !report?.rows.length) return;
+            const rows = reportDetailRows(report);
+            if (exportingReport || !rows.length) return;
             exportingReport = true;
             document.getElementById('exportReportPdfBtn').disabled = true;
             const status = document.getElementById('reportExportStatus');
             status.textContent = 'กำลังจัดหน้ารายงาน PDF...';
             try {
-                const result = await AgendaExport.createReportPdf({ title: report.title, subtitle: report.subtitle, filename: report.filename,
-                    summaryHtml: PresentationReport.summaryHtml(report), tableHead: PresentationReport.tableHead, rows: report.rows.map(row => PresentationReport.rowHtml(row, report.documentScope)),
+                const result = await AgendaExport.createReportPdf({ title: report.title, subtitle: reportPdfSubtitle(report, rows), filename: report.filename,
+                    summaryHtml: PresentationReport.summaryHtml(report), tableHead: PresentationReport.tableHead, rows: rows.map(row => PresentationReport.rowHtml(row, report.documentScope)),
                     source: reportDataLabel(), warning: reportWarning(), createdAt: reportTime(new Date()), version: APP_VERSION }, message => { status.textContent = message; });
                 downloadAgendaFile(result.blob, result.filename);
                 status.textContent = `สร้าง PDF แล้ว ${result.pageCount} หน้า`;
             } catch (error) { status.textContent = error.message || 'ส่งออกรายงานไม่สำเร็จ'; }
-            finally { exportingReport = false; document.getElementById('exportReportPdfBtn').disabled = !reportModel()?.rows.length; }
+            finally { exportingReport = false; document.getElementById('exportReportPdfBtn').disabled = !reportDetailRows(reportModel()).length; }
         }
 
-        document.querySelectorAll('[name="reportMode"], #reportTerm, #reportYear, #reportDocumentScope, #reportFollowUp').forEach(control => control.addEventListener('change', renderReport));
+        document.querySelectorAll('#reportView input, #reportView select').forEach(control => control.addEventListener('change', renderReport));
         document.getElementById('exportReportPdfBtn').addEventListener('click', exportPresentationPdf);
 
         function scheduleStatus(entry) {

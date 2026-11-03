@@ -82,6 +82,44 @@ test('an explicit MCO 5-6 selection makes follow-up check that type, while all k
     assert.equal(Report.build(report.rows, { ...compare, documentScope: 'unexpected' }).documentScope, 'all');
 });
 
+const detailCourses = [
+    course({ id: 'A', presented: true, upload: true, upload56: true }),
+    course({ id: 'B', booking: true, upload: true }),
+    course({ id: 'C', upload56: true }),
+    course({ id: 'D', bookingSource: 'unverified' }),
+    course({ id: 'E', presented: true, upload: true }),
+    course({ id: 'F' })
+];
+const selectedIds = (report, options) => Report.selectRows(report, options).map(row => row.id);
+
+test('detail filters combine presentation, document status, and follow-up without changing report totals', () => {
+    const report = Report.build(detailCourses, compare);
+    assert.deepEqual(selectedIds(report, { presentation: 'presented', documents: 'partial' }), ['E']);
+    assert.deepEqual(selectedIds(report, { presentation: 'scheduled', documents: 'partial', followUp: true }), ['B']);
+    assert.deepEqual(selectedIds(report, { presentation: 'presented', documents: 'partial', followUp: true }), []);
+    assert.deepEqual(selectedIds(report, { presentation: 'unscheduled', documents: 'missing' }), ['F']);
+    assert.deepEqual(selectedIds(report, { presentation: 'review' }), ['D']);
+    assert.deepEqual(selectedIds(report, { documents: 'complete' }), ['A']);
+    assert.equal(report.cohorts[0].total, 6);
+});
+
+test('document status only checks the selected types, including submissions without links', () => {
+    for (const [scope, complete, missing] of [['mco34', ['A', 'B', 'E'], ['C', 'D', 'F']], ['mco56', ['A', 'C'], ['B', 'D', 'E', 'F']]]) {
+        const report = Report.build(detailCourses, { ...compare, documentScope: scope });
+        assert.deepEqual(selectedIds(report, { documents: 'complete' }), complete);
+        assert.deepEqual(selectedIds(report, { documents: 'missing' }), missing);
+        assert.deepEqual(selectedIds(report, { documents: 'partial' }), []);
+    }
+});
+
+test('sorting puts outstanding statuses first and preserves course order within each status', () => {
+    const report = Report.build(detailCourses, compare);
+    assert.deepEqual(selectedIds(report, { order: 'presentation' }), ['D', 'C', 'F', 'B', 'A', 'E']);
+    assert.deepEqual(selectedIds(report, { order: 'documents' }), ['D', 'F', 'B', 'C', 'E', 'A']);
+    assert.deepEqual(selectedIds(report, { order: 'presentation', documents: 'partial' }), ['C', 'B', 'E']);
+    assert.deepEqual(selectedIds(report), ['A', 'B', 'C', 'D', 'E', 'F']);
+});
+
 test('report HTML escapes source values and only hyperlinks valid HTTPS documents', () => {
     const report = Report.build([course({ name: '<img src=x onerror=alert(1)>', fileLink: 'javascript:alert(1)', upload: true,
         fileLink56: 'https://drive.google.com/file/d/test/view', upload56: true, bookingSlots: [{ date: '<script>', time: '09:00' }] })], compare);
@@ -106,10 +144,10 @@ test('report has an independent tab and does not add an Apps Script trigger', ()
     assert.doesNotMatch(html, /ScriptApp\.newTrigger|sendApcrisReminders/);
 });
 
-test('report page pins the asset version and checks document filtering support', () => {
+test('report page pins the asset version and checks report API compatibility', () => {
     const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
     const version = html.match(/APP_VERSION = 'v([\d.]+)'/)[1];
     assert.ok(html.includes(`src="presentation-report.js?v=${version}"`));
-    assert.equal(Report.documentScopeVersion, 1);
-    assert.match(html, /window\.PresentationReport\?\.documentScopeVersion !== 1/);
+    assert.equal(Report.reportApiVersion, 2);
+    assert.match(html, /window\.PresentationReport\?\.reportApiVersion !== 2/);
 });

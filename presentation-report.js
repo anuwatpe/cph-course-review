@@ -121,7 +121,27 @@
 
     function needsFollowUp(row, documentScope) { return row.status !== 'presented' || !(documentScope === 'mco56' ? row.upload56 : row.upload); }
 
-    const api = { documentScopeVersion: 1, periods, build, summaryHtml, tableHead, rowHtml, needsFollowUp };
+    function selectRows(report, { presentation = 'all', documents = 'all', order = 'course', followUp = false } = {}) {
+        if (!report) return [];
+        const types = visibleDocuments(report.documentScope);
+        const documentStatus = row => {
+            const submitted = types.filter(type => row[type.uploaded]).length;
+            return submitted === 0 ? 'missing' : submitted === types.length ? 'complete' : 'partial';
+        };
+        const rows = report.rows.filter(row => (presentation === 'all' || row.status === presentation)
+            && (documents === 'all' || documentStatus(row) === documents)
+            && (!followUp || needsFollowUp(row, report.documentScope)));
+        if (order === 'presentation') {
+            const priority = ['review', 'unscheduled', 'scheduled', 'presented'];
+            rows.sort((a, b) => priority.indexOf(a.status) - priority.indexOf(b.status));
+        } else if (order === 'documents') {
+            const priority = ['missing', 'partial', 'complete'];
+            rows.sort((a, b) => priority.indexOf(documentStatus(a)) - priority.indexOf(documentStatus(b)));
+        }
+        return rows;
+    }
+
+    const api = { reportApiVersion: 2, periods, build, summaryHtml, tableHead, rowHtml, selectRows, needsFollowUp };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.PresentationReport = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
