@@ -61,6 +61,7 @@ function onOpen() {
     .addItem('จัดโฟลเดอร์เดิมเข้าเทอม', 'organizeExistingCourseFoldersByTerm')
     .addItem('แชร์โฟลเดอร์ให้อาจารย์', 'shareCourseFoldersWithInstructors')
     .addItem('สแกนไฟล์และเติมลิงก์', 'syncDriveLinksToSheet')
+    .addItem('ตรวจการเข้าถึง Drive', 'checkDriveSyncAccess')
     .addItem('ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์', 'makeLinkedFilesViewableByLink')
     .addItem('สร้างโฟลเดอร์และสแกนไฟล์', 'createFoldersAndSyncDriveLinks')
     .addItem('สร้าง Trigger ทุก 5 นาที', 'createDriveSyncTrigger')
@@ -95,6 +96,14 @@ function shareCourseFoldersWithInstructors() {
 }
 
 function syncDriveLinksToSheet() {
+  try {
+    return syncDriveLinksToSheet_();
+  } catch (error) {
+    throw driveSyncAccessError_(error);
+  }
+}
+
+function syncDriveLinksToSheet_() {
   const sheet = getTargetSheet_();
   const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
   const lastRow = sheet.getLastRow();
@@ -143,6 +152,43 @@ function syncDriveLinksToSheet() {
   });
 
   notify_(`อัปเดตลิงก์ไฟล์แล้ว ${updatedCount} รายวิชา`);
+}
+
+function checkDriveSyncAccess() {
+  try {
+    DriveApp.getRootFolder().getName();
+  } catch (error) {
+    throw driveSyncAccessError_(error, 'อ่าน Drive ของบัญชีนี้ไม่สำเร็จ กรุณาตรวจรายละเอียดใน Apps Script > Executions');
+  }
+
+  // Inspect configured folders without creating a replacement or changing access.
+  const rootId = extractDriveId_(DRIVE_SYNC_CONFIG.COURSE_ROOT_FOLDER_ID)
+    || extractDriveId_(PropertiesService.getDocumentProperties()?.getProperty('DRIVE_SYNC_ROOT_FOLDER_ID'));
+  const folderIds = [...new Set([rootId, ...DRIVE_SYNC_CONFIG.ROOT_FOLDER_IDS.map(extractDriveId_)].filter(Boolean))];
+  folderIds.forEach(folderId => {
+    try {
+      DriveApp.getFolderById(folderId).getName();
+    } catch (error) {
+      throw driveSyncAccessError_(error, 'ใช้ Drive ได้ แต่อ่านโฟลเดอร์ที่ตั้งไว้ไม่สำเร็จ กรุณาตรวจ Folder ID และสิทธิ์ของบัญชีที่เปิดชีต');
+    }
+  });
+
+  notify_(folderIds.length
+    ? `อ่าน Drive และโฟลเดอร์ที่ตั้งไว้ได้ ${folderIds.length} โฟลเดอร์ (ยังไม่ได้ตรวจสิทธิ์แก้ไขไฟล์)`
+    : 'อ่าน Drive ได้ ยังไม่มีโฟลเดอร์ที่ตั้งไว้ให้ตรวจ');
+  return { checkedFolders: folderIds.length };
+}
+
+function driveSyncAccessError_(error, fallbackMessage) {
+  const detail = String(error?.message || error);
+  let guidance = fallbackMessage;
+  if (/(?:access denied|ไม่ได้รับอนุญาตให้เข้าถึง)\s*:\s*DriveApp\b|domain policy.*disabled.*Drive/i.test(detail)) {
+    guidance = 'Google ปฏิเสธการใช้ DriveApp กรุณาตรวจบัญชีที่เปิดชีต และให้ผู้ดูแล Google Workspace ตรวจนโยบาย Drive SDK/API ของบัญชีนี้ ไม่ต้องเปิดโฟลเดอร์เป็นสาธารณะ';
+  } else if (/(?:authorization is required|required permissions|do not have permission to call|สิทธิ์ที่ต้องใช้)/i.test(detail)
+    && (fallbackMessage || /DriveApp\b|googleapis\.com\/auth\/drive/i.test(detail))) {
+    guidance = 'Apps Script ยังไม่ได้รับอนุญาตให้ใช้ Drive กรุณาเปิด Apps Script ด้วยบัญชีที่ใช้สแกน แล้ว Run checkDriveSyncAccess เพื่อตรวจและอนุญาตสิทธิ์';
+  }
+  return guidance ? new Error(`${guidance}\nรายละเอียดจาก Google: ${detail}`) : error;
 }
 
 function createDriveSyncTrigger() {

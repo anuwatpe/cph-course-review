@@ -207,6 +207,23 @@ Google Drive อาจส่งอีเมลแจ้งเตือนเม�
 
 ถ้าแถวยังไม่มี `Drive Folder ID` และ `AUTO_CREATE_COURSE_FOLDERS` เป็น `true` สคริปต์จะสร้างโฟลเดอร์รายวิชาให้ก่อน แล้วค่อยสแกนไฟล์
 
+### ตรวจการเข้าถึง Drive
+
+ใช้ตรวจปัญหา `Access denied: DriveApp` หรือ `ไม่ได้รับอนุญาตให้เข้าถึง: DriveApp` โดยอ่านข้อมูล Drive ของบัญชีที่เปิดชีตก่อน แล้วตรวจโฟลเดอร์แม่และโฟลเดอร์ค้นหาที่ตั้งไว้ เมนูนี้ **ไม่สร้างหรือย้ายโฟลเดอร์ ไม่เปลี่ยนสิทธิ์ ไม่แก้ข้อมูลในชีต ไม่ส่งอีเมล และไม่แตะ Trigger**
+
+1. อัปเดตสคริปต์ Drive Sync ใน Apps Script ของชีตสรุป โดยคงค่าชื่อชีตและ Folder ID ที่ใช้อยู่
+2. ใช้บัญชีเดียวกับที่กดสแกน เลือก `checkDriveSyncAccess` ใน Apps Script แล้วกด **Run** ครั้งแรก ถ้า Google ขออนุญาต ให้ตรวจสิทธิ์ Drive ของโครงการนี้ก่อนอนุญาต
+3. หลังโหลดชีตใหม่ ใช้ **Drive Sync > ตรวจการเข้าถึง Drive** ได้โดยตรง
+
+| ผลตรวจ | วิธีแก้ต่อ |
+| --- | --- |
+| `Access denied: DriveApp` แม้ตรวจการอนุญาตแล้ว | ให้ผู้ดูแล Google Workspace ตรวจว่า Drive SDK/API ถูกจำกัดสำหรับบัญชีหรือหน่วยงานนี้หรือไม่ การเปิด Drive ในเบราว์เซอร์ได้ไม่ได้แปลว่า Apps Script ใช้ API ได้ |
+| ต้องได้รับอนุญาต หรือขึ้น `Required permissions` | ใช้บัญชีที่กดสแกนอนุญาตสิทธิ์ใน Apps Script หากโครงการกำหนด `oauthScopes` เอง ให้ผู้ดูแลตรวจสิทธิ์ `https://www.googleapis.com/auth/drive` ซึ่งขั้นตอนเดิมใช้สร้างโฟลเดอร์และตั้งสิทธิ์ไฟล์ |
+| อ่าน Drive ได้ แต่เข้าโฟลเดอร์ที่ตั้งไว้ไม่ได้ | ตรวจ `COURSE_ROOT_FOLDER_ID` / `ROOT_FOLDER_IDS` และเปิดโฟลเดอร์ด้วยบัญชีเดียวกันเพื่อยืนยันสิทธิ์ ไม่จำเป็นต้องเปิดให้คนทั่วไปเข้าถึง |
+| อ่านได้ทั้ง Drive และโฟลเดอร์ แต่ยังสแกนไม่สำเร็จ | ดู **Apps Script > Executions** ของรอบที่ล้มเหลว เพื่อแยกสิทธิ์โฟลเดอร์รายวิชา ไฟล์ และสิทธิ์แก้การแชร์ ผลตรวจอ่านอย่างเดียวไม่ได้ทดสอบการแก้สิทธิ์ไฟล์ |
+
+อ้างอิง: [ข้อผิดพลาด DriveApp ของ Google](https://developers.google.com/apps-script/guides/support/troubleshooting#access_denied_driveapp_or_the_domain_policy_has_disabled_third-party_drive_apps), [การอนุญาต Apps Script](https://developers.google.com/apps-script/guides/services/authorization), [การตั้งค่า Drive API สำหรับผู้ดูแล Workspace](https://knowledge.workspace.google.com/admin/drive/allow-third-party-apps-for-drive-files)
+
 ### ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์
 
 ใช้เมื่อเว็บมีปุ่มลิงก์ไฟล์แล้ว แต่ผู้ใช้เปิดไฟล์ไม่ได้เพราะไฟล์ยังเป็น private
@@ -280,7 +297,7 @@ Google Drive อาจส่งอีเมลแจ้งเตือนเม�
 3. วางโค้ดจาก `google-drive-sheet-sync.gs`
 4. ถ้ามีชื่อชีตเฉพาะ ให้ใส่ใน `SHEET_NAME`
 5. ถ้าต้องการให้โฟลเดอร์รายวิชาอยู่ใต้โฟลเดอร์แม่ที่มีอยู่แล้ว ให้ใส่ `COURSE_ROOT_FOLDER_ID`
-6. กด Run ฟังก์ชัน `createCourseFoldersFromSheet` หนึ่งครั้งเพื่ออนุญาตสิทธิ์
+6. กด Run ฟังก์ชัน `checkDriveSyncAccess` เพื่อตรวจการอนุญาตและอ่านโฟลเดอร์โดยไม่เปลี่ยนข้อมูล
 7. Reload Google Sheet แล้วใช้เมนู `Drive Sync` > `สร้างโฟลเดอร์และสแกนไฟล์`
 8. ถ้าต้องการให้ระบบสแกนอัตโนมัติ ให้ใช้เมนู `Drive Sync` > `สร้าง Trigger ทุก 5 นาที`
 9. ถ้าต้องการอัปเดตเองเป็นครั้ง ๆ ให้ใช้เมนู `Drive Sync` > `ปิด Trigger อัตโนมัติ`
