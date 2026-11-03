@@ -62,6 +62,7 @@ function onOpen() {
     .addItem('จัดโฟลเดอร์เดิมเข้าเทอม', 'organizeExistingCourseFoldersByTerm')
     .addItem('แชร์โฟลเดอร์ให้อาจารย์', 'shareCourseFoldersWithInstructors')
     .addItem('สแกนไฟล์และเติมลิงก์', 'syncDriveLinksToSheet')
+    .addItem('สแกนและเติมลิงก์ (คงสิทธิ์ไฟล์)', 'scanDriveLinksWithoutSharing')
     .addItem('ตรวจการเข้าถึง Drive', 'checkDriveSyncAccess')
     .addItem('ตั้งสิทธิ์ไฟล์ให้เปิดผ่านลิงก์', 'makeLinkedFilesViewableByLink')
     .addItem('สร้างโฟลเดอร์และสแกนไฟล์', 'createFoldersAndSyncDriveLinks')
@@ -104,7 +105,15 @@ function syncDriveLinksToSheet() {
   }
 }
 
-function syncDriveLinksToSheet_() {
+function scanDriveLinksWithoutSharing() {
+  try {
+    return syncDriveLinksToSheet_(true);
+  } catch (error) {
+    throw driveSyncAccessError_(error);
+  }
+}
+
+function syncDriveLinksToSheet_(keepDrivePermissions = false) {
   const sheet = getTargetSheet_();
   const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
   const lastRow = sheet.getLastRow();
@@ -115,15 +124,17 @@ function syncDriveLinksToSheet_() {
   }
 
   const columns = getOrCreateColumns_(sheet);
-  if (DRIVE_SYNC_CONFIG.AUTO_CREATE_COURSE_FOLDERS) {
+  if (!keepDrivePermissions && DRIVE_SYNC_CONFIG.AUTO_CREATE_COURSE_FOLDERS) {
     ensureCourseFolders_(false, sheet, columns);
   }
 
   const lastColumn = sheet.getLastColumn();
   const values = sheet.getRange(headerRow + 1, 1, lastRow - headerRow, lastColumn).getValues();
-  const rootFilesByCourseCode = buildRootFileIndex_();
+  const rootFilesByCourseCode = driveSyncStep_('อ่านรายการไฟล์จากโฟลเดอร์ค้นหาที่ตั้งไว้', buildRootFileIndex_);
 
   let updatedCount = 0;
+  let unmatchedCount = 0;
+  let readErrorCount = 0;
   const now = new Date();
 
   values.forEach((row, rowIndex) => {
@@ -133,15 +144,23 @@ function syncDriveLinksToSheet_() {
 
     const existingFileId = row[columns.fileId - 1];
     const folderId = columns.folderId ? extractDriveId_(row[columns.folderId - 1]) : '';
-    const file = folderId
-      ? findLatestFileInFolder_(folderId)
-      : rootFilesByCourseCode[courseCode];
+    let file;
+    try {
+      file = folderId
+        ? driveSyncStep_(`อ่านรายการไฟล์รายวิชา ${courseCode} แถว ${rowNumber}`, () => findLatestFileInFolder_(folderId))
+        : rootFilesByCourseCode[courseCode];
+    } catch (error) {
+      if (!keepDrivePermissions) throw error;
+      Logger.log(driveSyncAccessError_(error).message);
+      readErrorCount += 1;
+      return;
+    }
 
-    if (!file) return;
+    if (!file) { unmatchedCount += 1; return; }
     if (existingFileId && existingFileId === file.id) return;
 
-    if (DRIVE_SYNC_CONFIG.MAKE_FILES_VIEWABLE_BY_LINK) {
-      makeFileViewableByLink_(file.id);
+    if (!keepDrivePermissions && DRIVE_SYNC_CONFIG.MAKE_FILES_VIEWABLE_BY_LINK) {
+      driveSyncStep_(`ตั้งสิทธิ์เปิดไฟล์ของ ${courseCode} แถว ${rowNumber}`, () => makeFileViewableByLink_(file.id));
     }
 
     sheet.getRange(rowNumber, columns.fileLink).setValue(file.url);
@@ -152,7 +171,20 @@ function syncDriveLinksToSheet_() {
     updatedCount += 1;
   });
 
-  notify_(`อัปเดตลิงก์ไฟล์แล้ว ${updatedCount} รายวิชา`);
+  const summary = `อัปเดตลิงก์ไฟล์แล้ว ${updatedCount} รายวิชา`;
+  notify_(keepDrivePermissions
+    ? `${summary} (คงสิทธิ์เดิม) | ไม่พบไฟล์ ${unmatchedCount} | อ่านไม่ได้ ${readErrorCount}${readErrorCount ? '\nดูแถวที่อ่านไม่ได้ใน Apps Script > Executions' : ''}`
+    : summary);
+}
+
+function driveSyncStep_(stage, operation) {
+  try {
+    return operation();
+  } catch (error) {
+    const annotated = new Error(String(error?.message || error));
+    annotated.driveSyncStage = error?.driveSyncStage ? `${stage} > ${error.driveSyncStage}` : stage;
+    throw annotated;
+  }
 }
 
 function checkDriveSyncAccess() {
@@ -192,6 +224,7 @@ function checkDriveSyncAccess() {
 
 function driveSyncAccessError_(error, fallbackMessage) {
   const detail = String(error?.message || error);
+  const stage = error?.driveSyncStage;
   let guidance = fallbackMessage;
   if (/(?:access denied|ไม่ได้รับอนุญาตให้เข้าถึง)\s*:\s*DriveApp\b|domain policy.*disabled.*Drive/i.test(detail)) {
     guidance = 'Google ปฏิเสธการใช้ DriveApp กรุณาตรวจบัญชีที่เปิดชีต และให้ผู้ดูแล Google Workspace ตรวจนโยบาย Drive SDK/API ของบัญชีนี้ ไม่ต้องเปิดโฟลเดอร์เป็นสาธารณะ';
@@ -199,7 +232,10 @@ function driveSyncAccessError_(error, fallbackMessage) {
     && (fallbackMessage || /DriveApp\b|googleapis\.com\/auth\/drive/i.test(detail))) {
     guidance = 'Apps Script ยังไม่ได้รับอนุญาตให้ใช้ Drive กรุณาเปิด Apps Script ด้วยบัญชีที่ใช้สแกน แล้ว Run checkDriveSyncAccess เพื่อตรวจและอนุญาตสิทธิ์';
   }
-  return guidance ? new Error(`${guidance}\nรายละเอียดจาก Google: ${detail}`) : error;
+  if (stage?.startsWith('ตั้งสิทธิ์เปิดไฟล์')) {
+    guidance = 'อ่านรายการไฟล์ผ่านแล้ว แต่เปิดไฟล์เพื่อตั้งสิทธิ์หรือเปลี่ยนสิทธิ์ไม่สำเร็จ ใช้เมนูสแกนและเติมลิงก์ (คงสิทธิ์ไฟล์) เพื่อเก็บลิงก์โดยไม่เปลี่ยนสิทธิ์';
+  }
+  return guidance || stage ? new Error(`${stage ? `ขั้นตอน: ${stage}\n` : ''}${guidance ? `${guidance}\n` : ''}รายละเอียด: ${detail}`) : error;
 }
 
 function createDriveSyncTrigger() {
@@ -322,7 +358,7 @@ function ensureCourseFolders_(forceCreate, providedSheet, providedColumns) {
 
     const existingFolderId = extractDriveId_(row[columns.folderId - 1]);
     if (existingFolderId) {
-      try {
+      driveSyncStep_(`ตรวจโฟลเดอร์เดิมของ ${courseCode} แถว ${rowNumber}`, () => {
         const folder = DriveApp.getFolderById(existingFolderId);
         const termFolder = getCourseParentFolder_(rootFolder, row, columns);
         if (DRIVE_SYNC_CONFIG.AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS) {
@@ -331,10 +367,8 @@ function ensureCourseFolders_(forceCreate, providedSheet, providedColumns) {
         sheet.getRange(rowNumber, columns.folderLink).setValue(folder.getUrl());
         sheet.getRange(rowNumber, columns.termFolderLink).setValue(termFolder.getUrl());
         existingCount += 1;
-        return;
-      } catch (error) {
-        Logger.log(`Invalid folder ID on row ${rowNumber}: ${existingFolderId}`);
-      }
+      });
+      return;
     }
 
     if (!forceCreate && !DRIVE_SYNC_CONFIG.AUTO_CREATE_COURSE_FOLDERS) return;
@@ -449,21 +483,13 @@ function shareCourseFoldersWithInstructors_() {
 
 function getOrCreateCourseRootFolder_() {
   const configuredFolderId = extractDriveId_(DRIVE_SYNC_CONFIG.COURSE_ROOT_FOLDER_ID);
-  if (configuredFolderId) {
-    return DriveApp.getFolderById(configuredFolderId);
-  }
+  if (configuredFolderId) return driveSyncStep_('เปิดโฟลเดอร์แม่ที่ตั้งไว้', () => DriveApp.getFolderById(configuredFolderId));
 
   const properties = PropertiesService.getDocumentProperties();
   const savedFolderId = properties.getProperty('DRIVE_SYNC_ROOT_FOLDER_ID');
-  if (savedFolderId) {
-    try {
-      return DriveApp.getFolderById(savedFolderId);
-    } catch (error) {
-      Logger.log(`Saved root folder ID is invalid: ${savedFolderId}`);
-    }
-  }
+  if (savedFolderId) return driveSyncStep_('เปิดโฟลเดอร์แม่ที่บันทึกไว้', () => DriveApp.getFolderById(savedFolderId));
 
-  const folder = DriveApp.createFolder(DRIVE_SYNC_CONFIG.COURSE_ROOT_FOLDER_NAME);
+  const folder = driveSyncStep_('สร้างโฟลเดอร์แม่', () => DriveApp.createFolder(DRIVE_SYNC_CONFIG.COURSE_ROOT_FOLDER_NAME));
   properties.setProperty('DRIVE_SYNC_ROOT_FOLDER_ID', folder.getId());
   return folder;
 }
@@ -478,11 +504,12 @@ function getCourseParentFolder_(rootFolder, row, columns) {
 }
 
 function getOrCreateChildFolder_(parentFolder, folderName) {
-  const existingFolders = parentFolder.getFoldersByName(folderName);
-  if (existingFolders.hasNext()) {
-    return { folder: existingFolders.next(), created: false };
-  }
-  return { folder: parentFolder.createFolder(folderName), created: true };
+  const folder = driveSyncStep_(`ค้นหาโฟลเดอร์ ${folderName}`, () => {
+    const existingFolders = parentFolder.getFoldersByName(folderName);
+    return existingFolders.hasNext() ? existingFolders.next() : null;
+  });
+  return folder ? { folder, created: false }
+    : { folder: driveSyncStep_(`สร้างโฟลเดอร์ ${folderName}`, () => parentFolder.createFolder(folderName)), created: true };
 }
 
 function buildCourseFolderName_(row, columns) {
@@ -542,7 +569,7 @@ function collectFilesByCourseCode_(folder, index) {
 }
 
 function findLatestFileInFolder_(folderId) {
-  const folder = DriveApp.getFolderById(folderId);
+  const folder = driveSyncStep_('เปิดโฟลเดอร์รายวิชา', () => DriveApp.getFolderById(folderId));
   const files = folder.getFiles();
   let latest = null;
 
@@ -566,8 +593,8 @@ function fileToRecord_(file) {
 }
 
 function makeFileViewableByLink_(fileId) {
-  DriveApp.getFileById(fileId)
-    .setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  const file = driveSyncStep_('เปิดไฟล์เพื่อเตรียมตั้งสิทธิ์', () => DriveApp.getFileById(fileId));
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 }
 
 function makeSheetLinkedFilesViewable_() {

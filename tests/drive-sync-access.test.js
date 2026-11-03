@@ -49,6 +49,7 @@ test('opening the menu registers the diagnostic but does not read Drive or start
     f.context.onOpen();
     assert.ok(f.menuItems.some(item => item.handler === 'checkDriveSyncAccess'));
     assert.ok(f.menuItems.some(item => item.handler === 'syncDriveLinksToSheet'));
+    assert.ok(f.menuItems.some(item => item.handler === 'scanDriveLinksWithoutSharing'));
     assert.deepEqual(f.reads, []);
 });
 
@@ -135,15 +136,14 @@ test('the existing scan handler explains DriveApp denial without hiding unrelate
     assert.throws(f.context.syncDriveLinksToSheet, error => error === unrelated);
 });
 
-test('a successful scan still fills the file link and status without invoking the diagnostic', () => {
+function scanFixture(rows = [['202300319', 'course-folder', '', '', '', '', '']]) {
     const f = fixture();
     const writes = [];
-    const permissions = [];
-    f.config.AUTO_CREATE_COURSE_FOLDERS = false;
+    const findLatestFile = f.context.findLatestFileInFolder_;
     f.context.getTargetSheet_ = () => ({
-        getLastRow: () => 2, getLastColumn: () => 7,
+        getLastRow: () => rows.length + 1, getLastColumn: () => 7,
         getRange: (row, column, height) => height
-            ? { getValues: () => [['202300319', 'course-folder', '', '', '', '', '']] }
+            ? { getValues: () => rows }
             : { setValue: value => writes.push({ row, column, value }) }
     });
     f.context.getOrCreateColumns_ = () => ({ courseCode: 1, folderId: 2, fileId: 3, fileLink: 4, upload: 5, fileName: 6, foundAt: 7 });
@@ -151,10 +151,68 @@ test('a successful scan still fills the file link and status without invoking th
         assert.equal(id, 'course-folder');
         return { id: 'file-id', url: 'https://drive.google.com/file/d/file-id/view', name: 'มคอ.3.pdf' };
     };
+    return { ...f, writes, findLatestFile };
+}
+
+test('a successful scan still fills the file link and status without invoking the diagnostic', () => {
+    const f = scanFixture();
+    const permissions = [];
+    f.config.AUTO_CREATE_COURSE_FOLDERS = false;
     f.context.makeFileViewableByLink_ = id => permissions.push(id);
     f.context.syncDriveLinksToSheet();
-    assert.deepEqual(writes.slice(0, 4).map(write => write.value), ['https://drive.google.com/file/d/file-id/view', true, 'file-id', 'มคอ.3.pdf']);
-    assert.equal(writes.length, 5);
+    assert.deepEqual(f.writes.slice(0, 4).map(write => write.value), ['https://drive.google.com/file/d/file-id/view', true, 'file-id', 'มคอ.3.pdf']);
+    assert.equal(f.writes.length, 5);
     assert.deepEqual(permissions, ['file-id']);
     assert.deepEqual(f.reads, []);
+});
+
+test('manual scan preserves Drive permissions, skips inaccessible rows and fills accessible links', () => {
+    const f = scanFixture([
+        ['202300319', 'course-folder', '', '', '', '', ''],
+        ['202300320', 'blocked-folder', '', '', '', '', ''],
+        ['202300321', '', '', '', '', '', '']
+    ]);
+    const read = f.context.findLatestFileInFolder_;
+    f.config.AUTO_CREATE_COURSE_FOLDERS = true;
+    f.config.AUTO_SHARE_COURSE_FOLDERS_WITH_INSTRUCTORS = true;
+    f.config.MAKE_FILES_VIEWABLE_BY_LINK = true;
+    f.context.ensureCourseFolders_ = () => assert.fail('must not create or share folders');
+    f.context.makeFileViewableByLink_ = () => assert.fail('must not set file sharing');
+    f.context.findLatestFileInFolder_ = id => {
+        if (id === 'blocked-folder') throw new Error('Access denied: DriveApp');
+        return read(id);
+    };
+    f.context.scanDriveLinksWithoutSharing();
+    assert.equal(f.writes.length, 5);
+    assert.ok(f.writes.every(write => write.row === 2));
+    assert.match(f.logs.join('\n'), /อ่านรายการไฟล์รายวิชา 202300320 แถว 3/);
+    assert.match(f.logs.at(-1), /ไม่พบไฟล์ 1 \| อ่านไม่ได้ 1/);
+});
+
+test('normal scan identifies a blocked sharing operation and does not record an unprocessed file', () => {
+    const f = scanFixture(); f.config.AUTO_CREATE_COURSE_FOLDERS = false;
+    f.context.DriveApp.getFileById = () => ({ setSharing: () => { throw new Error('Access denied: DriveApp'); } });
+    f.context.DriveApp.Access = { ANYONE_WITH_LINK: 'anyone' };
+    f.context.DriveApp.Permission = { VIEW: 'view' };
+    assert.throws(f.context.syncDriveLinksToSheet, /ตั้งสิทธิ์เปิดไฟล์ของ 202300319 แถว 2[\s\S]*คงสิทธิ์ไฟล์/);
+    assert.deepEqual(f.writes, []);
+});
+
+test('normal scan keeps row and operation context when a course folder cannot be opened', () => {
+    const f = scanFixture(); f.config.AUTO_CREATE_COURSE_FOLDERS = false;
+    f.context.findLatestFileInFolder_ = f.findLatestFile;
+    f.context.DriveApp.getFolderById = () => { throw new Error('Access denied: DriveApp'); };
+    assert.throws(f.context.syncDriveLinksToSheet, /อ่านรายการไฟล์รายวิชา 202300319 แถว 2 > เปิดโฟลเดอร์รายวิชา/);
+    assert.deepEqual(f.writes, []);
+});
+
+test('an inaccessible existing folder is not replaced by an automatically created folder', () => {
+    const f = scanFixture();
+    f.context.DriveApp.getFolderById = id => {
+        if (id === 'course-folder') throw new Error('Access denied: DriveApp');
+        return {};
+    };
+    f.context.getOrCreateChildFolder_ = () => assert.fail('must not replace an inaccessible folder');
+    assert.throws(f.context.syncDriveLinksToSheet, /ตรวจโฟลเดอร์เดิมของ 202300319 แถว 2/);
+    assert.deepEqual(f.writes, []);
 });
