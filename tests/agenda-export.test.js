@@ -53,7 +53,7 @@ test('export rejects non-HTTPS URLs and authentication embedded in URLs', () => 
 
 test('the release and footer badge use one updated version and the current release date', () => {
     const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
-    assert.match(html, /APP_VERSION = 'v1\.3\.1'/);
+    assert.match(html, /APP_VERSION = 'v1\.3\.2'/);
     assert.match(html, /APP_RELEASE_DATE = '3 พฤศจิกายน 2569'/);
     assert.match(html, /getElementById\('footerVersion'\)\.innerText = APP_VERSION/);
 });

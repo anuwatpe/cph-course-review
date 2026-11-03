@@ -210,6 +210,7 @@ Google Drive อาจส่งอีเมลแจ้งเตือนเม�
 ### ตรวจการเข้าถึง Drive
 
 ใช้ตรวจปัญหา `Access denied: DriveApp` หรือ `ไม่ได้รับอนุญาตให้เข้าถึง: DriveApp` โดยอ่านข้อมูล Drive ของบัญชีที่เปิดชีตก่อน แล้วตรวจโฟลเดอร์แม่และโฟลเดอร์ค้นหาที่ตั้งไว้ เมนูนี้ **ไม่สร้างหรือย้ายโฟลเดอร์ ไม่เปลี่ยนสิทธิ์ ไม่แก้ข้อมูลในชีต ไม่ส่งอีเมล และไม่แตะ Trigger**
+เมื่ออ่าน Drive ได้ ระบบจะตรวจแท็บสรุปและระบุชื่อแท็บ, `gid`, แถวหัวตาราง และตำแหน่งคอลัมน์รหัสวิชาในผลตรวจด้วย
 
 1. อัปเดตสคริปต์ Drive Sync ใน Apps Script ของชีตสรุป โดยคงค่าชื่อชีตและ Folder ID ที่ใช้อยู่
 2. ใช้บัญชีเดียวกับที่กดสแกน เลือก `checkDriveSyncAccess` ใน Apps Script แล้วกด **Run** ครั้งแรก ถ้า Google ขออนุญาต ให้ตรวจสิทธิ์ Drive ของโครงการนี้ก่อนอนุญาต
@@ -220,6 +221,7 @@ Google Drive อาจส่งอีเมลแจ้งเตือนเม�
 | `Access denied: DriveApp` แม้ตรวจการอนุญาตแล้ว | ให้ผู้ดูแล Google Workspace ตรวจว่า Drive SDK/API ถูกจำกัดสำหรับบัญชีหรือหน่วยงานนี้หรือไม่ การเปิด Drive ในเบราว์เซอร์ได้ไม่ได้แปลว่า Apps Script ใช้ API ได้ |
 | ต้องได้รับอนุญาต หรือขึ้น `Required permissions` | ใช้บัญชีที่กดสแกนอนุญาตสิทธิ์ใน Apps Script หากโครงการกำหนด `oauthScopes` เอง ให้ผู้ดูแลตรวจสิทธิ์ `https://www.googleapis.com/auth/drive` ซึ่งขั้นตอนเดิมใช้สร้างโฟลเดอร์และตั้งสิทธิ์ไฟล์ |
 | อ่าน Drive ได้ แต่เข้าโฟลเดอร์ที่ตั้งไว้ไม่ได้ | ตรวจ `COURSE_ROOT_FOLDER_ID` / `ROOT_FOLDER_IDS` และเปิดโฟลเดอร์ด้วยบัญชีเดียวกันเพื่อยืนยันสิทธิ์ ไม่จำเป็นต้องเปิดให้คนทั่วไปเข้าถึง |
+| อ่าน Drive ได้ แต่ไม่พบคอลัมน์รหัสวิชา | ตรวจชื่อแท็บ, `gid` และแถวที่แสดงในข้อความ ชีต APCRIS ใช้แท็บ `รายวิชา` (`gid=486231050`) และหัวตารางแถว 1 โดยรหัสวิชาอยู่คอลัมน์ G ไม่ต้องเพิ่มคอลัมน์ซ้ำถ้ามีอยู่แล้ว |
 | อ่านได้ทั้ง Drive และโฟลเดอร์ แต่ยังสแกนไม่สำเร็จ | ดู **Apps Script > Executions** ของรอบที่ล้มเหลว เพื่อแยกสิทธิ์โฟลเดอร์รายวิชา ไฟล์ และสิทธิ์แก้การแชร์ ผลตรวจอ่านอย่างเดียวไม่ได้ทดสอบการแก้สิทธิ์ไฟล์ |
 
 อ้างอิง: [ข้อผิดพลาด DriveApp ของ Google](https://developers.google.com/apps-script/guides/support/troubleshooting#access_denied_driveapp_or_the_domain_policy_has_disabled_third-party_drive_apps), [การอนุญาต Apps Script](https://developers.google.com/apps-script/guides/services/authorization), [การตั้งค่า Drive API สำหรับผู้ดูแล Workspace](https://knowledge.workspace.google.com/admin/drive/allow-third-party-apps-for-drive-files)
@@ -295,7 +297,7 @@ Google Drive อาจส่งอีเมลแจ้งเตือนเม�
 1. เปิด Google Sheet ที่เว็บนี้ใช้เป็นแหล่งข้อมูล
 2. ไปที่ `Extensions` > `Apps Script`
 3. วางโค้ดจาก `google-drive-sheet-sync.gs`
-4. ถ้ามีชื่อชีตเฉพาะ ให้ใส่ใน `SHEET_NAME`
+4. ค่าเริ่มต้นใช้ `SHEET_ID: 486231050` (เลข `gid` ของแท็บ `รายวิชา`) และ `HEADER_ROW: 1` ไม่เปลี่ยนตามแท็บที่เปิดอยู่ หากใช้แท็บอื่น ให้แก้ `SHEET_ID` หรือกำหนด `SHEET_NAME` เพื่อเลือกตามชื่อแทน หากหาแท็บไม่พบจะหยุด ไม่สแกนแท็บอื่นแทน
 5. ถ้าต้องการให้โฟลเดอร์รายวิชาอยู่ใต้โฟลเดอร์แม่ที่มีอยู่แล้ว ให้ใส่ `COURSE_ROOT_FOLDER_ID`
 6. กด Run ฟังก์ชัน `checkDriveSyncAccess` เพื่อตรวจการอนุญาตและอ่านโฟลเดอร์โดยไม่เปลี่ยนข้อมูล
 7. Reload Google Sheet แล้วใช้เมนู `Drive Sync` > `สร้างโฟลเดอร์และสแกนไฟล์`

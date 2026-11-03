@@ -16,7 +16,8 @@
  */
 
 const DRIVE_SYNC_CONFIG = {
-  SHEET_NAME: '', // Leave blank to use the active sheet.
+  SHEET_NAME: '', // Optional override for a different named tab.
+  SHEET_ID: 486231050, // Summary tab used by APCRIS; this is the gid in the tab URL.
   HEADER_ROW: 1,
 
   // Leave COURSE_ROOT_FOLDER_ID blank to let the script create one parent folder
@@ -173,10 +174,20 @@ function checkDriveSyncAccess() {
     }
   });
 
-  notify_(folderIds.length
-    ? `อ่าน Drive และโฟลเดอร์ที่ตั้งไว้ได้ ${folderIds.length} โฟลเดอร์ (ยังไม่ได้ตรวจสิทธิ์แก้ไขไฟล์)`
-    : 'อ่าน Drive ได้ ยังไม่มีโฟลเดอร์ที่ตั้งไว้ให้ตรวจ');
-  return { checkedFolders: folderIds.length };
+  const driveStatus = folderIds.length
+    ? `อ่าน Drive และโฟลเดอร์ที่ตั้งไว้ได้ ${folderIds.length} โฟลเดอร์`
+    : 'อ่าน Drive ได้ ยังไม่มีโฟลเดอร์ที่ตั้งไว้ให้ตรวจ';
+  let sheet;
+  let courseCode;
+  try {
+    sheet = getTargetSheet_();
+    ({ courseCode } = readDriveSyncHeaders_(sheet));
+  } catch (error) {
+    throw new Error(`${driveStatus}\nตรวจชีตไม่ผ่าน: ${error.message || error}`);
+  }
+  const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
+  notify_(`${driveStatus}\nแท็บ ${sheet.getName()} (gid=${sheet.getSheetId()}): พบคอลัมน์รหัสวิชาที่แถว ${headerRow} คอลัมน์ ${courseCode} (ยังไม่ได้ตรวจสิทธิ์แก้ไขไฟล์)`);
+  return { checkedFolders: folderIds.length, sheetId: sheet.getSheetId(), headerRow, courseCodeColumn: courseCode };
 }
 
 function driveSyncAccessError_(error, fallbackMessage) {
@@ -222,23 +233,34 @@ function deleteDriveSyncTriggers() {
 
 function getTargetSheet_() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!spreadsheet) throw new Error('กรุณาเปิด Apps Script จากชีตสรุปรายวิชา');
   if (DRIVE_SYNC_CONFIG.SHEET_NAME) {
     const sheet = spreadsheet.getSheetByName(DRIVE_SYNC_CONFIG.SHEET_NAME);
-    if (!sheet) throw new Error(`Sheet not found: ${DRIVE_SYNC_CONFIG.SHEET_NAME}`);
+    if (!sheet) throw new Error(`ไม่พบแท็บ "${DRIVE_SYNC_CONFIG.SHEET_NAME}" กรุณาตรวจ SHEET_NAME`);
     return sheet;
   }
-  return spreadsheet.getActiveSheet();
+  const sheetId = DRIVE_SYNC_CONFIG.SHEET_ID;
+  if (!Number.isInteger(sheetId) || sheetId < 0) throw new Error('กรุณาตั้ง SHEET_ID เป็นเลข gid ของแท็บรายวิชา');
+  const sheet = spreadsheet.getSheetById(sheetId);
+  if (!sheet) throw new Error(`ไม่พบแท็บรายวิชา gid=${sheetId} กรุณาตรวจ SHEET_ID หรือ SHEET_NAME ไม่ได้สแกนแท็บอื่นแทน`);
+  return sheet;
 }
 
-function getOrCreateColumns_(sheet) {
+function readDriveSyncHeaders_(sheet) {
   const headerRow = DRIVE_SYNC_CONFIG.HEADER_ROW;
-  const headers = sheet.getRange(headerRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (!Number.isInteger(headerRow) || headerRow < 1) throw new Error('กรุณาตั้ง HEADER_ROW เป็นเลขแถวหัวตาราง');
+  const lastColumn = sheet.getLastColumn();
+  const headers = lastColumn ? sheet.getRange(headerRow, 1, 1, lastColumn).getValues()[0] : [];
 
   const courseCode = findColumn_(headers, DRIVE_SYNC_CONFIG.COURSE_CODE_HEADERS);
   if (!courseCode) {
-    throw new Error(`Missing course code column. Expected one of: ${DRIVE_SYNC_CONFIG.COURSE_CODE_HEADERS.join(', ')}`);
+    throw new Error(`ไม่พบคอลัมน์รหัสวิชาในแท็บ "${sheet.getName()}" (gid=${sheet.getSheetId()}) แถว ${headerRow} กรุณาตรวจแท็บและ HEADER_ROW หัวข้อที่รองรับ: ${DRIVE_SYNC_CONFIG.COURSE_CODE_HEADERS.join(', ')}`);
   }
+  return { headers, courseCode };
+}
 
+function getOrCreateColumns_(sheet) {
+  const { headers, courseCode } = readDriveSyncHeaders_(sheet);
   return {
     courseCode,
     courseName: findColumn_(headers, DRIVE_SYNC_CONFIG.COURSE_NAME_HEADERS),
@@ -632,7 +654,7 @@ function normalizeCourseCode_(value) {
 }
 
 function normalizeHeader_(value) {
-  return String(value || '').trim().toLowerCase().replace(/\s+/g, '');
+  return String(value || '').normalize('NFKC').toLowerCase().replace(/[\s\u200B-\u200D\u2060\uFEFF]/g, '');
 }
 
 function extractDriveId_(value) {
