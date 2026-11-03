@@ -57,6 +57,31 @@ test('follow-up includes missing presentations and MCO 3-4 but does not infer MC
     assert.deepEqual(report.rows.filter(Report.needsFollowUp).map(row => row.id), ['x', 'y']);
 });
 
+test('document scope filters summaries and detail links without changing course totals', () => {
+    const data = [course({ upload: true, fileLink: 'https://drive.google.com/file/d/mco34/view',
+        upload56: true, fileLink56: 'https://drive.google.com/file/d/mco56/view' }), course({ id: 'x' })];
+    for (const [scope, visible, hidden] of [['mco34', 'มคอ.3-4', 'มคอ.5-6'], ['mco56', 'มคอ.5-6', 'มคอ.3-4']]) {
+        const report = Report.build(data, { ...compare, documentScope: scope });
+        const summary = Report.summaryHtml(report);
+        const rows = report.rows.map(row => Report.rowHtml(row, report.documentScope)).join('');
+        assert.equal(report.rows.length, 2);
+        assert.equal(report.cohorts[0].total, 2);
+        assert.ok(summary.includes(visible) && !summary.includes(hidden));
+        assert.ok(rows.includes(visible) && !rows.includes(hidden));
+        assert.match(rows, /ยังไม่พบเอกสาร/);
+        assert.match(rows, new RegExp(`/d/${scope}/view`));
+        assert.match(report.filename, new RegExp(`-${scope}\\.pdf$`));
+        assert.ok(report.subtitle.includes(visible));
+    }
+});
+
+test('an explicit MCO 5-6 selection makes follow-up check that type, while all keeps the original rule', () => {
+    const report = Report.build([course({ presented: true, upload: true }), course({ id: 'x', presented: true, upload56: true })], compare);
+    assert.deepEqual(report.rows.filter(row => Report.needsFollowUp(row, 'all')).map(row => row.id), ['x']);
+    assert.deepEqual(report.rows.filter(row => Report.needsFollowUp(row, 'mco56')).map(row => row.id), ['GE 25102']);
+    assert.equal(Report.build(report.rows, { ...compare, documentScope: 'unexpected' }).documentScope, 'all');
+});
+
 test('report HTML escapes source values and only hyperlinks valid HTTPS documents', () => {
     const report = Report.build([course({ name: '<img src=x onerror=alert(1)>', fileLink: 'javascript:alert(1)', upload: true,
         fileLink56: 'https://drive.google.com/file/d/test/view', upload56: true, bookingSlots: [{ date: '<script>', time: '09:00' }] })], compare);

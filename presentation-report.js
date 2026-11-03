@@ -5,8 +5,17 @@
     const statuses = { presented: 'นำเสนอแล้ว', scheduled: 'นัดแล้ว รอนำเสนอ', unscheduled: 'ยังไม่พบการลงเวลา', review: 'ตรวจสอบข้อมูล' };
     const metrics = [
         ['total', 'รายวิชาทั้งหมด'], ['presented', 'นำเสนอแล้ว'], ['scheduled', statuses.scheduled],
-        ['unscheduled', statuses.unscheduled], ['review', statuses.review], ['upload34', 'ส่ง มคอ.3-4 แล้ว'], ['upload56', 'ส่ง มคอ.5-6 แล้ว']
+        ['unscheduled', statuses.unscheduled], ['review', statuses.review]
     ];
+    const documentTypes = [
+        { scope: 'mco34', label: 'มคอ.3-4', metric: 'upload34', uploaded: 'upload', link: 'fileLink' },
+        { scope: 'mco56', label: 'มคอ.5-6', metric: 'upload56', uploaded: 'upload56', link: 'fileLink56' }
+    ];
+
+    function visibleDocuments(scope) {
+        const selected = documentTypes.find(type => type.scope === scope);
+        return selected ? [selected] : documentTypes;
+    }
 
     function escape(value) {
         return String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
@@ -67,9 +76,12 @@
                 terms, available, missing: terms.filter(term => !available.includes(term)), rows: group, ...counts(group) };
         });
         const levels = [...new Set(rows.map(row => row.level))].sort((a, b) => (a || Infinity) - (b || Infinity));
-        return { rows, cohorts, levels, year, comparison, title,
-            subtitle: comparison ? `เปรียบเทียบเทอม 1 กับเทอม 2+3 / ปีการศึกษา ${year}` : `ภาคการศึกษา ${selection.term}`,
-            filename: comparison ? `apcris-presentation-${year}-term-1-vs-2-3.pdf` : `apcris-presentation-${selection.term.replace('/', '-')}.pdf`,
+        const documentType = documentTypes.find(type => type.scope === selection.documentScope);
+        const subtitle = comparison ? `เปรียบเทียบเทอม 1 กับเทอม 2+3 / ปีการศึกษา ${year}` : `ภาคการศึกษา ${selection.term}`;
+        const filename = comparison ? `apcris-presentation-${year}-term-1-vs-2-3` : `apcris-presentation-${selection.term.replace('/', '-')}`;
+        return { rows, cohorts, levels, year, comparison, title, documentScope: documentType?.scope || 'all',
+            subtitle: documentType ? `${subtitle} / ${documentType.label}` : subtitle,
+            filename: `${filename}${documentType ? `-${documentType.scope}` : ''}.pdf`,
             issueCount: issues.filter(issue => issue.terms?.some(term => termSet.has(term))).length };
     }
 
@@ -78,7 +90,8 @@
 
     function summaryHtml(report) {
         const heads = report.cohorts.map((cohort, index) => `<th scope="col" class="pr-series-${index}">${escape(cohort.label)}<small>${cohort.available.length ? `ข้อมูล ${escape(cohort.available.join(', '))}` : 'ไม่มีข้อมูล'}</small></th>`).join('');
-        const totals = metrics.map(([key, label]) => `<tr${key === 'presented' ? ' class="pr-primary-row"' : ''}><th scope="row">${label}</th>${report.cohorts.map(cohort => `<td>${!cohort.total ? '-' : ['presented', 'upload34', 'upload56'].includes(key) ? ratio(cohort[key], cohort.total) : cohort[key]}</td>`).join('')}</tr>`).join('');
+        const visibleMetrics = [...metrics, ...visibleDocuments(report.documentScope).map(type => [type.metric, `ส่ง ${type.label} แล้ว`])];
+        const totals = visibleMetrics.map(([key, label]) => `<tr${key === 'presented' ? ' class="pr-primary-row"' : ''}><th scope="row">${label}</th>${report.cohorts.map(cohort => `<td>${!cohort.total ? '-' : ['presented', 'upload34', 'upload56'].includes(key) ? ratio(cohort[key], cohort.total) : cohort[key]}</td>`).join('')}</tr>`).join('');
         const chart = report.levels.map(level => `<div class="pr-level"><strong>${level ? `ชั้นปี ${level}` : 'ไม่ระบุชั้นปี'}</strong>${report.cohorts.map((cohort, index) => {
             const bucket = counts(cohort.rows.filter(row => row.level === level));
             return `<div class="pr-chart-row pr-series-${index}"><span>${escape(cohort.label)}</span><span class="pr-track" aria-hidden="true"><span style="width:${bucket.rate ?? 0}%"></span></span><span>${ratio(bucket.presented, bucket.total)}</span></div>`;
@@ -94,7 +107,7 @@
 
     const tableHead = '<colgroup><col style="width:40%"><col style="width:23%"><col style="width:19%"><col style="width:18%"></colgroup><thead><tr><th scope="col">รายวิชา</th><th scope="col">ผู้รับผิดชอบ / เวลานัด</th><th scope="col">นำเสนอ</th><th scope="col">เอกสาร</th></tr></thead>';
 
-    function rowHtml(row) {
+    function rowHtml(row, documentScope) {
         const slots = row.bookingSlots || [];
         const schedule = slots.length ? `${escape(slots[0].date)} ${escape(slots[0].time)}${slots.length > 1 ? ` (+${slots.length - 1} นัด)` : ''}` : '-';
         const document = (label, uploaded, link) => {
@@ -103,10 +116,10 @@
         };
         return `<tr data-report-row><td><strong>${escape(row.name)}</strong><small>${escape(row.id)} / ${row.level ? `ชั้นปี ${row.level}` : 'ไม่ระบุชั้นปี'} / ${escape(row.termYear)}</small></td>
             <td>${escape(row.instructor || '-')}<small>${schedule}</small></td><td><span class="pr-status-${row.status}">${statuses[row.status]}</span></td>
-            <td class="pr-docs">${document('มคอ.3-4', row.upload, row.fileLink)}${document('มคอ.5-6', row.upload56, row.fileLink56)}</td></tr>`;
+            <td class="pr-docs">${visibleDocuments(documentScope).map(type => document(type.label, row[type.uploaded], row[type.link])).join('')}</td></tr>`;
     }
 
-    function needsFollowUp(row) { return row.status !== 'presented' || !row.upload; }
+    function needsFollowUp(row, documentScope) { return row.status !== 'presented' || !(documentScope === 'mco56' ? row.upload56 : row.upload); }
 
     const api = { periods, build, summaryHtml, tableHead, rowHtml, needsFollowUp };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;

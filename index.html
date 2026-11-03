@@ -458,6 +458,9 @@
             </fieldset>
             <label id="reportYearLabel" class="text-sm text-slate-600">ปีการศึกษา<select id="reportYear" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2 min-w-28"></select></label>
             <label id="reportTermLabel" class="text-sm text-slate-600 hidden">ภาคการศึกษา<select id="reportTerm" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2 min-w-28"></select></label>
+            <label class="text-sm text-slate-600">เอกสาร<select id="reportDocumentScope" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2">
+                <option value="all">ทั้งสองประเภท</option><option value="mco34">มคอ.3-4</option><option value="mco56">มคอ.5-6</option>
+            </select></label>
         </div>
         <p id="reportExportStatus" class="text-sm text-slate-600 mt-3 empty:hidden" role="status" aria-live="polite"></p>
         <p id="reportDataStatus" class="text-sm text-slate-600 my-3" role="status"></p>
@@ -501,7 +504,7 @@
     <script src="agenda-export.js"></script>
     <script src="presentation-report.js"></script>
     <script>
-        const APP_VERSION = 'v1.4.0';
+        const APP_VERSION = 'v1.4.1';
         const APP_RELEASE_DATE = '3 พฤศจิกายน 2569';
 
         // Tab switching
@@ -838,7 +841,8 @@
 
         function reportModel() {
             return PresentationReport.build(globalData, { mode: document.querySelector('[name="reportMode"]:checked').value,
-                term: document.getElementById('reportTerm').value, year: document.getElementById('reportYear').value }, lastBookingMerge?.issues || []);
+                term: document.getElementById('reportTerm').value, year: document.getElementById('reportYear').value,
+                documentScope: document.getElementById('reportDocumentScope').value }, lastBookingMerge?.issues || []);
         }
 
         function reportTime(date) {
@@ -874,9 +878,9 @@
             document.getElementById('reportSummary').innerHTML = report?.rows.length ? PresentationReport.summaryHtml(report) : '<p class="pr-note">ยังไม่มีข้อมูลรายวิชาสำหรับรายงาน</p>';
             document.getElementById('reportDetails').classList.toggle('hidden', !report?.rows.length);
             if (!report?.rows.length) return;
-            const rows = document.getElementById('reportFollowUp').checked ? report.rows.filter(PresentationReport.needsFollowUp) : report.rows;
+            const rows = document.getElementById('reportFollowUp').checked ? report.rows.filter(row => PresentationReport.needsFollowUp(row, report.documentScope)) : report.rows;
             document.getElementById('reportRowCount').textContent = `(${rows.length}/${report.rows.length})`;
-            document.getElementById('reportTable').innerHTML = PresentationReport.tableHead + `<tbody>${rows.length ? rows.map(PresentationReport.rowHtml).join('') : '<tr><td colspan="4">ไม่พบรายการที่ต้องติดตาม</td></tr>'}</tbody>`;
+            document.getElementById('reportTable').innerHTML = PresentationReport.tableHead + `<tbody>${rows.length ? rows.map(row => PresentationReport.rowHtml(row, report.documentScope)).join('') : '<tr><td colspan="4">ไม่พบรายการที่ต้องติดตาม</td></tr>'}</tbody>`;
         }
 
         async function exportPresentationPdf() {
@@ -888,7 +892,7 @@
             status.textContent = 'กำลังจัดหน้ารายงาน PDF...';
             try {
                 const result = await AgendaExport.createReportPdf({ title: report.title, subtitle: report.subtitle, filename: report.filename,
-                    summaryHtml: PresentationReport.summaryHtml(report), tableHead: PresentationReport.tableHead, rows: report.rows.map(PresentationReport.rowHtml),
+                    summaryHtml: PresentationReport.summaryHtml(report), tableHead: PresentationReport.tableHead, rows: report.rows.map(row => PresentationReport.rowHtml(row, report.documentScope)),
                     source: reportDataLabel(), warning: reportWarning(), createdAt: reportTime(new Date()), version: APP_VERSION }, message => { status.textContent = message; });
                 downloadAgendaFile(result.blob, result.filename);
                 status.textContent = `สร้าง PDF แล้ว ${result.pageCount} หน้า`;
@@ -896,7 +900,7 @@
             finally { exportingReport = false; document.getElementById('exportReportPdfBtn').disabled = !reportModel()?.rows.length; }
         }
 
-        document.querySelectorAll('[name="reportMode"], #reportTerm, #reportYear, #reportFollowUp').forEach(control => control.addEventListener('change', renderReport));
+        document.querySelectorAll('[name="reportMode"], #reportTerm, #reportYear, #reportDocumentScope, #reportFollowUp').forEach(control => control.addEventListener('change', renderReport));
         document.getElementById('exportReportPdfBtn').addEventListener('click', exportPresentationPdf);
 
         function scheduleStatus(entry) {
