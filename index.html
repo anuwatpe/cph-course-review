@@ -119,6 +119,15 @@
                 <span class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-0.5 rounded-full font-mono font-semibold" id="versionBadge"></span>
                 <span class="text-xs text-slate-400" id="releaseDateLabel"></span>
             </div>
+            <div id="adminShortcut" class="hidden mt-3 flex flex-wrap items-center gap-2">
+                <a id="adminSheetLink" target="_blank" rel="noopener noreferrer" class="agenda-action">
+                    <i data-lucide="sheet" class="w-4 h-4 shrink-0 text-primary"></i>
+                    <span>ระบบวิพากษ์รายวิชา-สบ.สสช</span>
+                </a>
+                <button id="editAdminShortcutBtn" type="button" class="agenda-action w-9" title="ตั้งค่าทางลัดผู้ดูแล" aria-label="ตั้งค่าทางลัดผู้ดูแล">
+                    <i data-lucide="settings-2" class="w-4 h-4"></i>
+                </button>
+            </div>
         </div>
         
         <!-- ตัวกรอง และ ปุ่ม Action -->
@@ -515,6 +524,30 @@
         </div>
     </dialog>
 
+    <dialog id="adminShortcutDialog" class="agenda-export-dialog !max-w-md" aria-labelledby="adminShortcutTitle">
+        <form id="adminShortcutForm">
+            <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
+                <h2 id="adminShortcutTitle" class="text-lg font-medium">ทางลัดผู้ดูแล</h2>
+                <button id="closeAdminShortcutBtn" type="button" title="ปิด" aria-label="ปิด" class="w-9 h-9 inline-flex items-center justify-center rounded-md hover:bg-slate-100">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="p-5">
+                <label for="adminSheetUrl" class="block text-sm text-slate-700">ลิงก์แก้ไขชีต ระบบวิพากษ์รายวิชา-สบ.สสช</label>
+                <input id="adminSheetUrl" type="url" required autocomplete="off" spellcheck="false" aria-describedby="adminShortcutError" class="mt-2 block w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                <p id="adminShortcutError" class="mt-2 text-sm text-rose-700 empty:hidden" role="alert"></p>
+            </div>
+            <div class="flex flex-wrap justify-end gap-2 px-5 py-4 border-t border-slate-200">
+                <button id="removeAdminShortcutBtn" type="button" class="agenda-action hidden">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>ลบทางลัด
+                </button>
+                <button type="submit" class="inline-flex items-center gap-2 rounded-md bg-primary hover:bg-blue-700 text-white px-3 py-2 text-sm">
+                    <i data-lucide="check" class="w-4 h-4"></i>บันทึกทางลัด
+                </button>
+            </div>
+        </form>
+    </dialog>
+
     <!-- Footer -->
     <footer class="mt-8 mb-6 text-center text-sm text-slate-500">
         <p>&copy; <span id="currentYear"></span> APCRIS | ระบบสารสนเทศการวิพากษ์รายวิชา. All rights reserved.</p>
@@ -522,10 +555,10 @@
     </footer>
 
     <script src="booking-sync.js"></script>
-    <script src="agenda-export.js?v=1.4.5"></script>
-    <script src="presentation-report.js?v=1.4.5"></script>
+    <script src="agenda-export.js?v=1.4.6"></script>
+    <script src="presentation-report.js?v=1.4.6"></script>
     <script>
-        const APP_VERSION = 'v1.4.5';
+        const APP_VERSION = 'v1.4.6';
         const APP_RELEASE_DATE = '3 พฤศจิกายน 2569';
 
         const tabs = { dashboard: 'tabDashboard', schedule: 'tabSchedule', booking: 'tabBooking', report: 'tabReport' };
@@ -1552,6 +1585,70 @@
             return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
         }
 
+        function adminSheetEditUrl(value) {
+            try {
+                const url = new URL(value.trim());
+                if (url.origin !== 'https://docs.google.com' || url.username || url.password) return '';
+                const match = url.pathname.match(/^\/spreadsheets\/(?:u\/\d+\/)?d\/([a-zA-Z0-9_-]+)\/edit\/?$/);
+                if (!match) return '';
+                const gid = url.searchParams.get('gid') || new URLSearchParams(url.hash.slice(1)).get('gid');
+                return `https://docs.google.com/spreadsheets/d/${match[1]}/edit#gid=${/^\d+$/.test(gid) ? gid : '486231050'}`;
+            } catch (_) { return ''; }
+        }
+
+        function initAdminShortcut() {
+            const key = 'apcris:admin-sheet-shortcut';
+            const group = document.getElementById('adminShortcut');
+            const link = document.getElementById('adminSheetLink');
+            const dialog = document.getElementById('adminShortcutDialog');
+            const field = document.getElementById('adminSheetUrl');
+            const error = document.getElementById('adminShortcutError');
+            const remove = document.getElementById('removeAdminShortcutBtn');
+            const refresh = () => {
+                let url = '';
+                try { url = adminSheetEditUrl(localStorage.getItem(key) || ''); } catch (_) { /* No shortcut when storage is unavailable. */ }
+                if (url) link.href = url;
+                else link.removeAttribute('href');
+                group.classList.toggle('hidden', !url);
+            };
+            const open = () => {
+                field.value = link.getAttribute('href') || '';
+                remove.classList.toggle('hidden', !field.value);
+                error.textContent = '';
+                dialog.showModal();
+            };
+            const persist = url => {
+                try {
+                    if (url) localStorage.setItem(key, url);
+                    else localStorage.removeItem(key);
+                } catch (_) {
+                    error.textContent = 'เบราว์เซอร์ไม่อนุญาตให้บันทึกการตั้งค่าทางลัด';
+                    return;
+                }
+                refresh();
+                dialog.close();
+            };
+            document.getElementById('editAdminShortcutBtn').addEventListener('click', open);
+            document.getElementById('closeAdminShortcutBtn').addEventListener('click', () => dialog.close());
+            remove.addEventListener('click', () => persist(''));
+            document.getElementById('adminShortcutForm').addEventListener('submit', event => {
+                event.preventDefault();
+                const url = adminSheetEditUrl(field.value);
+                if (url) persist(url);
+                else error.textContent = 'กรุณาใช้ลิงก์ Google Sheets ที่ลงท้ายด้วย /edit ไม่ใช่ลิงก์ CSV ที่เผยแพร่';
+            });
+            window.addEventListener('storage', event => {
+                if (event.key === key || event.key === null) refresh();
+            });
+            refresh();
+            const setup = new URL(location.href);
+            if (setup.searchParams.has('setup-admin-shortcut')) {
+                setup.searchParams.delete('setup-admin-shortcut');
+                history.replaceState(history.state, '', setup);
+                open();
+            }
+        }
+
         document.getElementById('refreshDataBtn').addEventListener('click', loadData);
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) loadData();
@@ -1560,6 +1657,7 @@
         window.addEventListener('hashchange', syncTabFromUrl);
         syncTabFromUrl();
         if (activeTab === 'booking') loadData();
+        initAdminShortcut();
         setInterval(loadData, AUTO_REFRESH_MS);
     </script>
 </body>
