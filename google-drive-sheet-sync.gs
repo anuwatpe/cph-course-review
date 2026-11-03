@@ -66,6 +66,7 @@ function onOpen() {
     .addItem('สร้าง Trigger ทุก 5 นาที', 'createDriveSyncTrigger')
     .addItem('ปิด Trigger อัตโนมัติ', 'deleteDriveSyncTriggers')
     .addToUi();
+  if (typeof apcrisReminderMenu_ === 'function') apcrisReminderMenu_();
 }
 
 function createFoldersAndSyncDriveLinks() {

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <base target="_blank">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>APCRIS แจ้งเตือน</title>
+    <style>
+        *{box-sizing:border-box;letter-spacing:0}
+        body{margin:0;height:100dvh;display:flex;flex-direction:column;overflow:hidden;color:#263449;background:white;font:14px/1.6 Tahoma,sans-serif}
+        header,main,footer{padding:16px 20px}
+        header{border-bottom:1px solid #dbe3ed;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0}
+        main{flex:1;min-height:0;overflow:auto}
+        h1{font-size:22px;margin:0;color:#1d4ed8} h2{font-size:16px;margin:0 0 10px}
+        p{margin:4px 0} .muted{color:#64748b;font-size:12px}.mode{color:#166534;font-size:12px}
+        fieldset{border:0;padding:0;margin:0 0 12px;min-width:0} legend{font-weight:bold;margin-bottom:6px}
+        .choices{display:flex;flex-wrap:wrap;gap:8px 16px}
+        label{display:inline-flex;gap:7px;align-items:center;min-width:0} input[type=checkbox]{accent-color:#2563eb;width:16px;height:16px;flex-shrink:0}
+        input[type=date],select{border:1px solid #b9c7d7;background:white;border-radius:5px;padding:7px;min-width:0;max-width:100%;font:inherit;color:inherit}
+        .deadlines{display:flex;flex-wrap:wrap;gap:10px 20px}.deadlines label{flex-wrap:wrap}
+        button{border:1px solid #b9c7d7;border-radius:5px;padding:8px 14px;background:white;color:#334155;font:inherit;cursor:pointer}
+        button:hover{background:#f1f5f9} button:disabled{opacity:.45;cursor:default}
+        button.primary{background:#2563eb;border-color:#2563eb;color:white} button.primary:hover{background:#1d4ed8}
+        :focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+        #status{padding:10px 0;overflow-wrap:anywhere} #status.error{color:#b91c1c}
+        #warnings{padding-left:20px;color:#9a3412;font-size:13px;overflow-wrap:anywhere}
+        .results{display:grid;grid-template-columns:minmax(230px,1fr) minmax(0,1.3fr);gap:20px;border-top:1px solid #dbe3ed;padding-top:16px}
+        #recipients{max-height:420px;overflow:auto}
+        .recipient{padding:12px 0;border-bottom:1px solid #e2e8f0;overflow-wrap:anywhere}
+        .recipient label{align-items:flex-start;width:100%}.recipient .identity{min-width:0}
+        .recipient button{font-size:12px;padding:4px 9px;margin:8px 0 0 24px}
+        .hold{color:#9a3412;font-size:12px;margin-left:24px}
+        #emailSubject{font-size:13px;margin:8px 0;overflow-wrap:anywhere}
+        iframe{width:100%;height:390px;border:1px solid #dbe3ed;background:white}
+        footer{border-top:1px solid #dbe3ed;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;background:white}
+        #sendResults{padding:0 20px 16px;overflow-wrap:anywhere;max-height:150px;overflow:auto;flex-shrink:0} #sendResults:empty{display:none}
+        dialog{border:1px solid #b9c7d7;border-radius:8px;width:min(460px,calc(100% - 28px));padding:20px;color:#263449}
+        dialog::backdrop{background:#18263988} dialog h2{margin-top:0} dialog p{overflow-wrap:anywhere}
+        dialog .actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:18px}
+        [hidden]{display:none!important}
+        @media(max-width:650px){.results{grid-template-columns:minmax(0,1fr)}header,main,footer{padding:14px}header{align-items:flex-start}iframe{height:430px}.deadlines label{display:block}footer{align-items:flex-start}#selectionSummary{font-size:12px}}
+    </style>
+</head>
+<body>
+    <header>
+        <div><h1>APCRIS</h1><p>แจ้งเตือนงานรายวิชา</p></div>
+        <div><p class="mode">กดส่งเอง</p><p class="muted">เว้นการส่งซ้ำ 7 วัน</p></div>
+    </header>
+    <main>
+        <form id="settings">
+            <fieldset><legend>ภาคการศึกษา</legend><div class="choices" id="terms"></div></fieldset>
+            <fieldset><legend>งานที่ต้องการเตือน</legend><div class="choices">
+                <label><input id="booking" type="checkbox" checked>ยังไม่ลงเวลา</label>
+                <label><input id="upload34" type="checkbox" checked>ยังไม่ส่ง มคอ.3-4</label>
+                <label><input id="upload56" type="checkbox">ยังไม่ส่ง มคอ.5-6</label>
+            </div></fieldset>
+            <fieldset><legend>กำหนดส่ง (ไม่บังคับ)</legend><div class="deadlines">
+                <label>ลงเวลา <input id="bookingDeadline" type="date" aria-label="กำหนดลงเวลา"></label>
+                <label>เอกสาร <input id="uploadDeadline" type="date" aria-label="กำหนดส่งเอกสาร"></label>
+            </div></fieldset>
+            <button id="previewBtn" type="submit" disabled>ตรวจรายการที่จะเตือน</button>
+        </form>
+        <p id="status" role="status" aria-live="polite">กำลังอ่านข้อมูล...</p>
+        <ul id="warnings" hidden></ul>
+        <section id="preview" class="results" hidden>
+            <div><h2>ผู้รับ</h2><label><input type="checkbox" id="selectAll">เลือกผู้รับที่ส่งได้ทั้งหมด</label><div id="recipients"></div></div>
+            <div><h2>ตัวอย่างอีเมล</h2><label for="emailRecipient" class="muted">ผู้รับ</label><select id="emailRecipient" style="width:100%"></select><p id="emailSubject"></p><iframe id="emailBody" title="เนื้อหาอีเมลตัวอย่าง" sandbox=""></iframe></div>
+        </section>
+    </main>
+    <footer><span id="selectionSummary">ยังไม่ตรวจรายการ</span><button id="sendBtn" class="primary" type="button" disabled>ส่งอีเมลที่เลือก</button></footer>
+    <div id="sendResults" role="status" aria-live="polite"></div>
+    <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+        <h2 id="confirmTitle">ยืนยันส่งอีเมล</h2><p id="confirmSummary"></p>
+        <p id="confirmRecipients" class="muted"></p>
+        <label style="margin-top:12px"><input id="confirmChecked" type="checkbox">ตรวจผู้รับและเนื้อหาแล้ว</label>
+        <div class="actions"><button id="cancelSendBtn" type="button">ยกเลิก</button><button id="confirmSendBtn" class="primary" type="button" disabled>ยืนยันส่ง</button></div>
+    </dialog>
+    <script>
+        let plan = null;
+        let busy = false;
+        const $ = id => document.getElementById(id);
+        function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
+        function chosen() { return [...document.querySelectorAll('#recipients input:checked:not(:disabled)')].map(input => input.value); }
+        function buttons() {
+            $('previewBtn').disabled = busy || !document.querySelector('#terms input:checked');
+            $('sendBtn').disabled = busy || !plan || !chosen().length;
+            $('selectAll').disabled = busy || !plan?.groups.some(group => group.eligible);
+            const eligible = [...document.querySelectorAll('#recipients input:not(:disabled)')];
+            $('selectAll').checked = eligible.length > 0 && eligible.every(input => input.checked);
+            $('selectAll').indeterminate = chosen().length > 0 && chosen().length < eligible.length;
+            $('selectionSummary').textContent = plan ? `เลือก ${chosen().length} / ${plan.groups.filter(group => group.eligible).length} คนที่ส่งได้` : 'ยังไม่ตรวจรายการ';
+        }
+        function setBusy(value) {
+            busy = value;
+            document.querySelectorAll('#settings input,#recipients input,#emailRecipient').forEach(input => { input.disabled = value || input.dataset.held === 'true'; });
+            buttons();
+        }
+        function fail(error) { setBusy(false); status(error.message || String(error), true); }
+        function invalidate() {
+            plan = null; $('preview').hidden = true; $('warnings').hidden = true; $('sendResults').replaceChildren();
+            status('ยังไม่ตรวจรายการตามตัวเลือกปัจจุบัน'); buttons();
+        }
+        function options() {
+            return { terms: [...document.querySelectorAll('#terms input:checked')].map(input => input.value),
+                booking: $('booking').checked, upload34: $('upload34').checked, upload56: $('upload56').checked,
+                bookingDeadline: $('bookingDeadline').value, uploadDeadline: $('uploadDeadline').value };
+        }
+        function showEmail() {
+            const group = plan?.groups.find(group => group.email === $('emailRecipient').value);
+            $('emailSubject').textContent = group?.message.subject || '';
+            $('emailBody').srcdoc = group?.message.htmlBody || '';
+        }
+        function showPreview(result) {
+            plan = result;
+            $('recipients').replaceChildren(); $('emailRecipient').replaceChildren(); $('warnings').replaceChildren();
+            result.warnings.forEach(message => { const item = document.createElement('li'); item.textContent = message; $('warnings').append(item); });
+            $('warnings').hidden = !result.warnings.length;
+            result.groups.forEach(group => {
+                const row = document.createElement('div'); row.className = 'recipient';
+                const label = document.createElement('label');
+                const check = document.createElement('input'); check.type = 'checkbox'; check.value = group.email;
+                check.checked = group.eligible; check.dataset.held = String(!group.eligible); check.disabled = !group.eligible;
+                check.addEventListener('change', buttons);
+                const identity = document.createElement('span'); identity.className = 'identity';
+                const address = document.createElement('strong'); address.textContent = group.email;
+                const name = document.createElement('p'); name.className = 'muted'; name.textContent = group.names.join(' / ');
+                const items = document.createElement('p'); items.className = 'muted'; items.textContent = `${group.items.length} รายวิชา`;
+                identity.append(address, name, items); label.append(check, identity); row.append(label);
+                if (!group.eligible) {
+                    const held = document.createElement('p'); held.className = 'hold';
+                    const next = group.nextAt ? new Date(group.nextAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'short' }) : '';
+                    held.textContent = `${group.reason}${next ? ` / ส่งได้ตั้งแต่ ${next}` : ''}`; row.append(held);
+                }
+                const view = document.createElement('button'); view.type = 'button'; view.textContent = 'ดูอีเมล';
+                view.addEventListener('click', () => { $('emailRecipient').value = group.email; showEmail(); }); row.append(view);
+                $('recipients').append(row); $('emailRecipient').add(new Option(group.email, group.email));
+            });
+            $('preview').hidden = !result.groups.length;
+            setBusy(false); showEmail();
+            status(result.groups.length ? `ตรวจข้อมูลเมื่อ ${new Date(result.checkedAt).toLocaleString('th-TH', { timeZone: 'Asia/Bangkok' })}` : 'ไม่พบงานค้างที่มีอีเมลผู้รับตามตัวเลือกนี้');
+        }
+        $('settings').addEventListener('change', invalidate);
+        $('settings').addEventListener('submit', event => {
+            event.preventDefault(); if (busy) return;
+            plan = null; $('preview').hidden = true; $('warnings').hidden = true; $('sendResults').replaceChildren();
+            setBusy(true); status('กำลังตรวจข้อมูลล่าสุด...');
+            google.script.run.withSuccessHandler(showPreview).withFailureHandler(fail).getApcrisReminderPreview(options());
+        });
+        $('emailRecipient').addEventListener('change', showEmail);
+        $('selectAll').addEventListener('change', event => {
+            document.querySelectorAll('#recipients input:not(:disabled)').forEach(input => { input.checked = event.target.checked; }); buttons();
+        });
+        $('sendBtn').addEventListener('click', () => {
+            if (busy || !plan || !chosen().length) return;
+            $('confirmSummary').textContent = `ส่งอีเมลถึงอาจารย์ ${chosen().length} คน จากบัญชี ${$('sendBtn').dataset.actor}`;
+            $('confirmRecipients').textContent = chosen().join(', ');
+            $('confirmChecked').checked = false; $('confirmSendBtn').disabled = true; $('confirmDialog').showModal();
+        });
+        $('confirmChecked').addEventListener('change', event => { $('confirmSendBtn').disabled = !event.target.checked; });
+        $('cancelSendBtn').addEventListener('click', () => $('confirmDialog').close());
+        $('confirmSendBtn').addEventListener('click', () => {
+            if (busy || !plan || !$('confirmChecked').checked) return;
+            const request = { token: plan.token, emails: chosen(), confirmed: true };
+            $('confirmDialog').close(); setBusy(true); status('กำลังตรวจข้อมูลซ้ำและส่งอีเมล...');
+            google.script.run.withSuccessHandler(result => {
+                plan = null; $('preview').hidden = true; setBusy(false);
+                $('sendResults').replaceChildren();
+                const labels = { SENT: 'ระบบอีเมลรับคำสั่งส่งแล้ว', REVIEW: 'ต้องตรวจผลก่อนส่งใหม่', NOT_ATTEMPTED: 'ยังไม่ได้ส่ง' };
+                result.results.forEach(item => { const line = document.createElement('p'); line.textContent = `${item.email}: ${labels[item.status] || item.status} / ${item.detail}`; $('sendResults').append(line); });
+                status(`จบรอบส่ง: ${result.results.filter(item => item.status === 'SENT').length} คน`);
+            }).withFailureHandler(error => { plan = null; $('preview').hidden = true; fail(error); }).sendApcrisReminders(request);
+        });
+        google.script.run.withSuccessHandler(result => {
+            $('terms').replaceChildren();
+            result.terms.forEach(term => {
+                const label = document.createElement('label'); const input = document.createElement('input');
+                input.type = 'checkbox'; input.value = term; input.checked = Boolean(result.previous?.terms.includes(term));
+                label.append(input, document.createTextNode(term)); $('terms').append(label);
+            });
+            if (result.previous) {
+                ['booking', 'upload34', 'upload56'].forEach(id => { $(id).checked = result.previous[id] === true; });
+                ['bookingDeadline', 'uploadDeadline'].forEach(id => { $(id).value = result.previous[id] || ''; });
+            }
+            $('sendBtn').dataset.actor = result.actor;
+            status('ยังไม่ตรวจรายการ'); buttons();
+        }).withFailureHandler(fail).getApcrisReminderOptions();
+    </script>
+</body>
+</html>
