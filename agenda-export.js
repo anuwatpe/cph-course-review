@@ -205,32 +205,80 @@
         return canvas;
     }
 
+    async function renderPdf(pages, title, progress, signal) {
+        const pdf = new root.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
+        pdf.setProperties({ title: `${SYSTEM_NAME} - ${title}`, subject: SYSTEM_NAME_TH, author: 'สาขาวิชาสาธารณสุขชุมชน', creator: `${SYSTEM_NAME} - ${SYSTEM_NAME_EN}` });
+        for (let index = 0; index < pages.length; index++) {
+            progress?.(`กำลังสร้าง PDF หน้า ${index + 1}/${pages.length}`);
+            const { element } = pages[index];
+            const canvas = await capture(element, signal);
+            if (index) pdf.addPage();
+            pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, 210, 297);
+            canvas.width = 0; canvas.height = 0;
+            const bounds = element.getBoundingClientRect();
+            element.querySelectorAll('a[href]').forEach(link => {
+                const url = safeUrl(link.href);
+                const rect = link.getBoundingClientRect();
+                if (url) pdf.link((rect.left - bounds.left) / bounds.width * 210, (rect.top - bounds.top) / bounds.height * 297,
+                    rect.width / bounds.width * 210, rect.height / bounds.height * 297, { url });
+            });
+        }
+        return pdf.output('blob');
+    }
+
     async function createPdf(snapshot, progress, signal) {
         await loadLibrary('pdf', () => typeof root.jspdf?.jsPDF === 'function');
         const { stage, pages } = await layout(snapshot, 'pdf', signal);
         try {
-            const pdf = new root.jspdf.jsPDF({ unit: 'mm', format: 'a4', compress: true });
-            pdf.setProperties({ title: `${SYSTEM_NAME} - กำหนดการประชุมวิพากษ์รายวิชา`, subject: SYSTEM_NAME_TH, author: 'สาขาวิชาสาธารณสุขชุมชน', creator: `${SYSTEM_NAME} - ${SYSTEM_NAME_EN}` });
-            for (let index = 0; index < pages.length; index++) {
-                progress?.(`กำลังสร้าง PDF หน้า ${index + 1}/${pages.length}`);
-                const { element } = pages[index];
-                const canvas = await capture(element, signal);
-                if (index) pdf.addPage();
-                pdf.addImage(canvas.toDataURL('image/jpeg', 0.96), 'JPEG', 0, 0, 210, 297);
-                canvas.width = 0; canvas.height = 0;
-                const bounds = element.getBoundingClientRect();
-                element.querySelectorAll('a[href]').forEach(link => {
-                    const url = safeUrl(link.href);
-                    const rect = link.getBoundingClientRect();
-                    if (url) pdf.link((rect.left - bounds.left) / bounds.width * 210, (rect.top - bounds.top) / bounds.height * 297,
-                        rect.width / bounds.width * 210, rect.height / bounds.height * 297, { url });
-                });
-            }
+            const blob = await renderPdf(pages, 'กำหนดการประชุมวิพากษ์รายวิชา', progress, signal);
             const firstDay = pages[0].day.key;
             const lastDay = pages[pages.length - 1].day.key;
             const name = firstDay !== lastDay && [firstDay, lastDay].every(key => /^\d{4}-\d{2}-\d{2}$/.test(key))
                 ? `${SYSTEM_NAME.toLowerCase()}-agenda-${firstDay}-to-${lastDay}.pdf` : filename(firstDay, 'pdf');
-            return { blob: pdf.output('blob'), filename: name, pageCount: pages.length };
+            return { blob, filename: name, pageCount: pages.length };
+        } finally { stage.remove(); }
+    }
+
+    async function createReportPdf(snapshot, progress) {
+        if (!snapshot.rows.length) throw new Error('ไม่มีรายวิชาสำหรับส่งออกรายงาน');
+        await Promise.all([loadLibrary('pdf', () => typeof root.jspdf?.jsPDF === 'function'),
+            loadLibrary('canvas', () => typeof root.html2canvas === 'function'), root.document.fonts.ready]);
+        const stage = root.document.createElement('div');
+        stage.id = 'report-export-stage'; stage.inert = true; stage.setAttribute('aria-hidden', 'true');
+        stage.style.cssText = 'position:absolute;left:-100000px;top:0;pointer-events:none;';
+        stage.innerHTML = `<style>${STYLE}</style>`;
+        root.document.body.appendChild(stage);
+        try {
+            const pages = [];
+            const addPage = (label, html) => {
+                stage.insertAdjacentHTML('beforeend', `<section class="ae-page pr pr-print">
+                    <header class="ae-header"><p class="ae-system-name">${SYSTEM_NAME}</p><p class="ae-brand">${SYSTEM_NAME_TH} / สาขาวิชาสาธารณสุขชุมชน</p>
+                    <h1 class="ae-title">${escape(snapshot.title)}</h1><p class="ae-term">${escape(snapshot.subtitle)}</p></header>
+                    <div class="ae-content" style="padding-top:16px"><h2 style="font-size:17px;font-weight:600;margin:0 0 12px">${label}</h2>${html}</div>
+                    <footer class="ae-footer"><div class="ae-footer-top"><span class="ae-footer-left">${escape(snapshot.source)}<br>จัดทำ ${escape(snapshot.createdAt)} / ${SYSTEM_NAME} ${escape(snapshot.version)}</span><span class="ae-page-number"></span></div>${snapshot.warning ? `<div class="ae-stale">${escape(snapshot.warning)}</div>` : ''}</footer></section>`);
+                const element = stage.lastElementChild;
+                pages.push({ element });
+                return element.querySelector('.ae-content');
+            };
+            const overflows = content => content.scrollHeight > content.clientHeight + 1;
+            const cover = addPage('ภาพรวมประจำรอบ', snapshot.summaryHtml);
+            if (overflows(cover)) throw new Error('ข้อมูลสรุปมีขนาดเกินหน้า PDF');
+            const detailTable = `<table class="pr-table">${snapshot.tableHead}<tbody></tbody></table>`;
+            let content = addPage('รายละเอียดรายวิชา', detailTable);
+            let body = content.querySelector('tbody');
+            for (const row of snapshot.rows) {
+                body.insertAdjacentHTML('beforeend', row);
+                if (!overflows(content)) continue;
+                body.lastElementChild.remove();
+                if (!body.children.length) throw new Error('รายละเอียดบางรายวิชายาวเกินหน้า PDF');
+                content = addPage('รายละเอียดรายวิชา (ต่อ)', detailTable);
+                body = content.querySelector('tbody');
+                body.insertAdjacentHTML('beforeend', row);
+                if (overflows(content)) throw new Error('รายละเอียดบางรายวิชายาวเกินหน้า PDF');
+            }
+            pages.forEach(({ element }, index) => { element.querySelector('.ae-page-number').textContent = `หน้า ${index + 1} / ${pages.length}`; });
+            const blob = await renderPdf(pages, snapshot.title, progress);
+            return { blob, filename: snapshot.filename, pageCount: pages.length };
         } finally { stage.remove(); }
     }
 
@@ -253,7 +301,7 @@
         } finally { stage.remove(); }
     }
 
-    const api = { createPdf, createImages, rowHtml, filename, safeUrl };
+    const api = { createPdf, createReportPdf, createImages, rowHtml, filename, safeUrl };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.AgendaExport = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

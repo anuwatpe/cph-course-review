@@ -63,6 +63,35 @@
         .agenda-action:hover { background: #eff6ff; border-color: #93c5fd; }
         .agenda-export-dialog { width: min(52rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); padding: 0; margin: auto; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #1e293b; }
         .agenda-export-dialog::backdrop { background: rgba(15, 23, 42, .55); }
+        .pr h3 { margin: 0 0 10px; font-weight: 600; font-size: 16px; }
+        .pr-overview { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; }
+        .pr-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+        .pr-table th, .pr-table td { padding: 9px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; text-align: left; overflow-wrap: anywhere; }
+        .pr-table thead { background: #eef2f7; color: #334155; }
+        .pr-table th { font-weight: 500; }
+        .pr-table small { display: block; margin-top: 2px; color: #58677a; font-size: 11px; }
+        .pr-summary thead th:first-child { width: 40%; }
+        .pr-summary td { font-variant-numeric: tabular-nums; }
+        .pr-primary-row { background: #eef5ff; color: #1746a2; }
+        .pr-series-0 { --pr-fill: #2563eb; }
+        .pr-series-1 { --pr-fill: #0f766e; }
+        .pr-summary .pr-series-0, .pr-summary .pr-series-1 { border-top: 3px solid var(--pr-fill); }
+        .pr-level { padding: 9px 0; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        .pr-chart-row { display: grid; grid-template-columns: 74px minmax(0, 1fr) 108px; gap: 8px; align-items: center; margin-top: 4px; font-size: 11px; }
+        .pr-track { height: 8px; background: #e8edf3; }
+        .pr-track > span { display: block; height: 100%; background: var(--pr-fill); }
+        .pr-note, .pr-alert { margin: 10px 0 0; font-size: 12px; line-height: 1.55; }
+        .pr-note { color: #58677a; }
+        .pr-alert, .pr-status-review { color: #92400e; }
+        .pr-status-presented { color: #166534; }
+        .pr-status-scheduled { color: #1d4ed8; }
+        .pr-docs a { color: #1d4ed8; text-decoration: underline; }
+        .pr-docs div + div { margin-top: 5px; }
+        .pr-print .pr-overview { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; }
+        .pr-print .pr-table { font-size: 11px; }
+        .pr-print .pr-table th, .pr-print .pr-table td { padding: 8px; }
+        .pr-print .pr-table small, .pr-print .pr-note, .pr-print .pr-alert { font-size: 10px; }
+        @media (max-width: 850px) { .pr:not(.pr-print) .pr-overview { grid-template-columns: minmax(0, 1fr); } }
         @media (max-width: 1023px) {
             .agenda-grid { grid-template-columns: 5.5rem minmax(0, 1fr); gap: .5rem .75rem; }
             .agenda-columns { display: none; }
@@ -133,6 +162,9 @@
         <button id="tabBooking" onclick="switchTab('booking')" role="tab" aria-selected="false" aria-controls="bookingView" tabindex="-1" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
             <i data-lucide="clock" class="w-4 h-4"></i>
             <span>ลงเวลา</span>
+        </button>
+        <button id="tabReport" onclick="switchTab('report')" role="tab" aria-selected="false" aria-controls="reportView" tabindex="-1" class="tab-nav shrink-0 flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg text-sm font-medium transition-all">
+            <i data-lucide="chart-no-axes-combined" class="w-4 h-4"></i><span>รายงาน</span>
         </button>
     </div>
 
@@ -410,6 +442,34 @@
         </div>
     </div>
 
+    <section id="reportView" class="pr hidden" role="tabpanel" aria-labelledby="tabReport">
+        <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <h2 class="text-xl font-medium text-slate-900">รายงานผลการนำเสนอรายวิชา</h2>
+            <button id="exportReportPdfBtn" type="button" disabled class="inline-flex items-center gap-2 text-sm bg-primary hover:bg-blue-700 text-white rounded-md px-3 py-2 disabled:opacity-40">
+                <i data-lucide="file-down" class="w-4 h-4"></i>ส่งออก PDF
+            </button>
+        </div>
+        <div class="flex flex-wrap items-end gap-3 border-y border-slate-200 bg-white p-4">
+            <fieldset><legend class="text-sm text-slate-600 mb-1">มุมมองรายงาน</legend>
+                <div class="inline-flex rounded-md border border-slate-300 text-sm overflow-hidden">
+                    <label class="cursor-pointer"><input type="radio" name="reportMode" value="term" class="peer sr-only"><span class="block px-3 py-2 peer-checked:bg-blue-50 peer-checked:text-blue-700 peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-blue-500">รายเทอม</span></label>
+                    <label class="cursor-pointer border-l border-slate-300"><input type="radio" name="reportMode" value="comparison" checked class="peer sr-only"><span class="block px-3 py-2 peer-checked:bg-blue-50 peer-checked:text-blue-700 peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-blue-500">เทียบ 1 กับ 2+3</span></label>
+                </div>
+            </fieldset>
+            <label id="reportYearLabel" class="text-sm text-slate-600">ปีการศึกษา<select id="reportYear" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2 min-w-28"></select></label>
+            <label id="reportTermLabel" class="text-sm text-slate-600 hidden">ภาคการศึกษา<select id="reportTerm" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2 min-w-28"></select></label>
+        </div>
+        <p id="reportExportStatus" class="text-sm text-slate-600 mt-3 empty:hidden" role="status" aria-live="polite"></p>
+        <p id="reportDataStatus" class="text-sm text-slate-600 my-3" role="status"></p>
+        <div id="reportSummary" class="bg-white p-4 border-y border-slate-200"></div>
+        <div id="reportDetails" class="mt-5 hidden">
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-3"><h3 class="!m-0">รายละเอียดรายวิชา <span id="reportRowCount" class="text-sm font-normal text-slate-500"></span></h3>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="reportFollowUp" class="accent-blue-600">เฉพาะงานที่ต้องติดตาม</label>
+            </div>
+            <div class="overflow-x-auto bg-white border-y border-slate-200" tabindex="0" aria-label="ตารางรายละเอียดรายวิชา"><table id="reportTable" class="pr-table min-w-[650px]"></table></div>
+        </div>
+    </section>
+
     <dialog id="agendaImageDialog" class="agenda-export-dialog" aria-labelledby="agendaImageDialogTitle">
         <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-slate-200">
             <h2 id="agendaImageDialogTitle" class="text-lg font-medium">รูปภาพกำหนดการ</h2>
@@ -439,13 +499,14 @@
 
     <script src="booking-sync.js"></script>
     <script src="agenda-export.js"></script>
+    <script src="presentation-report.js"></script>
     <script>
-        const APP_VERSION = 'v1.3.3';
+        const APP_VERSION = 'v1.4.0';
         const APP_RELEASE_DATE = '3 พฤศจิกายน 2569';
 
         // Tab switching
         function switchTab(tab) {
-            const tabs = { dashboard: 'tabDashboard', schedule: 'tabSchedule', booking: 'tabBooking' };
+            const tabs = { dashboard: 'tabDashboard', schedule: 'tabSchedule', booking: 'tabBooking', report: 'tabReport' };
             if (!tabs[tab]) return;
             Object.entries(tabs).forEach(([view, id]) => {
                 document.getElementById(`${view}View`).classList.toggle('hidden', view !== tab);
@@ -454,6 +515,7 @@
                 button.setAttribute('aria-selected', String(view === tab));
                 button.tabIndex = view === tab ? 0 : -1;
             });
+            if (tab === 'report') renderReport();
             if (tab !== 'booking') loadData();
             lucide.createIcons();
         }
@@ -477,6 +539,9 @@
         let lastScheduleUpdatedAt = null;
         let lastBookingMerge = null;
         let bookingReadFailed = false;
+        let reportReadFailed = false;
+        let lastCourseUpdatedAt = null;
+        let exportingReport = false;
         let visibleScheduleGroups = [];
         let exportingAgenda = false;
         let imageExportAbort = null;
@@ -641,10 +706,13 @@
                 if (bookingMerge) globalData = bookingMerge.data;
                 lastBookingMerge = bookingMerge;
                 bookingReadFailed = bookingResult.status === 'rejected';
+                lastCourseUpdatedAt = new Date();
+                reportReadFailed = false;
                 showBookingSyncStatus(bookingMerge, bookingResult.status === 'rejected');
                 document.getElementById('lastUpdate').innerText = new Date().toLocaleString('th-TH');
                 populateTermFilter(globalData);
                 applyFilters(); 
+                renderReport();
             } catch (error) {
                 console.error("Error fetching data:", error);
                 document.getElementById('lastUpdate').innerText = "เกิดข้อผิดพลาดในการดึงข้อมูล";
@@ -652,7 +720,9 @@
                 status.className = 'text-amber-700';
                 status.textContent = 'อัปเดตข้อมูลไม่สำเร็จ กำลังแสดงข้อมูลเดิม กรุณาลองใหม่';
                 bookingReadFailed = true;
+                reportReadFailed = true;
                 renderSchedule();
+                renderReport();
             } finally {
                 loadingData = false;
                 document.getElementById('refreshDataBtn').disabled = false;
@@ -765,6 +835,69 @@
             updateDashboard(filteredData);
             renderSchedule();
         }
+
+        function reportModel() {
+            return PresentationReport.build(globalData, { mode: document.querySelector('[name="reportMode"]:checked').value,
+                term: document.getElementById('reportTerm').value, year: document.getElementById('reportYear').value }, lastBookingMerge?.issues || []);
+        }
+
+        function reportTime(date) {
+            return date ? date.toLocaleString('th-TH', { timeZone: 'Asia/Bangkok', dateStyle: 'short', timeStyle: 'short' }) : '-';
+        }
+
+        function reportDataLabel() {
+            return `ข้อมูลรายวิชา ${reportTime(lastCourseUpdatedAt)} | ลงเวลา ${reportTime(lastScheduleUpdatedAt)}`;
+        }
+
+        function reportWarning() {
+            if (reportReadFailed) return 'อ่านข้อมูลรายวิชาไม่สำเร็จ แสดงข้อมูลล่าสุดที่อ่านได้';
+            if (bookingReadFailed) return 'อ่านชีตลงเวลาไม่สำเร็จ ใช้ข้อมูลล่าสุดที่อ่านได้หรือสถานะในชีตสรุป';
+            return '';
+        }
+
+        function renderReport() {
+            if (document.getElementById('reportView').classList.contains('hidden')) return;
+            const { terms, years } = PresentationReport.periods(globalData);
+            for (const [id, values] of [['reportTerm', terms], ['reportYear', years]]) {
+                const select = document.getElementById(id);
+                const value = select.value;
+                select.replaceChildren(...values.map(option => new Option(option, option)));
+                if (values.includes(value)) select.value = value;
+                select.disabled = !values.length;
+            }
+            const report = reportModel();
+            const comparison = document.querySelector('[name="reportMode"]:checked').value === 'comparison';
+            document.getElementById('reportTermLabel').classList.toggle('hidden', comparison);
+            document.getElementById('reportYearLabel').classList.toggle('hidden', !comparison);
+            document.getElementById('reportDataStatus').textContent = [reportDataLabel(), reportWarning()].filter(Boolean).join(' | ');
+            document.getElementById('exportReportPdfBtn').disabled = exportingReport || !report?.rows.length;
+            document.getElementById('reportSummary').innerHTML = report?.rows.length ? PresentationReport.summaryHtml(report) : '<p class="pr-note">ยังไม่มีข้อมูลรายวิชาสำหรับรายงาน</p>';
+            document.getElementById('reportDetails').classList.toggle('hidden', !report?.rows.length);
+            if (!report?.rows.length) return;
+            const rows = document.getElementById('reportFollowUp').checked ? report.rows.filter(PresentationReport.needsFollowUp) : report.rows;
+            document.getElementById('reportRowCount').textContent = `(${rows.length}/${report.rows.length})`;
+            document.getElementById('reportTable').innerHTML = PresentationReport.tableHead + `<tbody>${rows.length ? rows.map(PresentationReport.rowHtml).join('') : '<tr><td colspan="4">ไม่พบรายการที่ต้องติดตาม</td></tr>'}</tbody>`;
+        }
+
+        async function exportPresentationPdf() {
+            const report = reportModel();
+            if (exportingReport || !report?.rows.length) return;
+            exportingReport = true;
+            document.getElementById('exportReportPdfBtn').disabled = true;
+            const status = document.getElementById('reportExportStatus');
+            status.textContent = 'กำลังจัดหน้ารายงาน PDF...';
+            try {
+                const result = await AgendaExport.createReportPdf({ title: report.title, subtitle: report.subtitle, filename: report.filename,
+                    summaryHtml: PresentationReport.summaryHtml(report), tableHead: PresentationReport.tableHead, rows: report.rows.map(PresentationReport.rowHtml),
+                    source: reportDataLabel(), warning: reportWarning(), createdAt: reportTime(new Date()), version: APP_VERSION }, message => { status.textContent = message; });
+                downloadAgendaFile(result.blob, result.filename);
+                status.textContent = `สร้าง PDF แล้ว ${result.pageCount} หน้า`;
+            } catch (error) { status.textContent = error.message || 'ส่งออกรายงานไม่สำเร็จ'; }
+            finally { exportingReport = false; document.getElementById('exportReportPdfBtn').disabled = !reportModel()?.rows.length; }
+        }
+
+        document.querySelectorAll('[name="reportMode"], #reportTerm, #reportYear, #reportFollowUp').forEach(control => control.addEventListener('change', renderReport));
+        document.getElementById('exportReportPdfBtn').addEventListener('click', exportPresentationPdf);
 
         function scheduleStatus(entry) {
             if (entry.issue) return 'issue';
