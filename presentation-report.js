@@ -91,7 +91,16 @@
     function summaryHtml(report) {
         const heads = report.cohorts.map((cohort, index) => `<th scope="col" class="pr-series-${index}">${escape(cohort.label)}<small>${cohort.available.length ? `ข้อมูล ${escape(cohort.available.join(', '))}` : 'ไม่มีข้อมูล'}</small></th>`).join('');
         const visibleMetrics = [...metrics, ...visibleDocuments(report.documentScope).map(type => [type.metric, `ส่ง ${type.label} แล้ว`])];
-        const totals = visibleMetrics.map(([key, label]) => `<tr${key === 'presented' ? ' class="pr-primary-row"' : ''}><th scope="row">${label}</th>${report.cohorts.map(cohort => `<td>${!cohort.total ? '-' : ['presented', 'upload34', 'upload56'].includes(key) ? ratio(cohort[key], cohort.total) : cohort[key]}</td>`).join('')}</tr>`).join('');
+        const totals = visibleMetrics.map(([key, label]) => {
+            const isDocument = documentTypes.some(type => type.metric === key);
+            const isPresented = key === 'presented';
+            const rowClass = isPresented ? 'pr-primary-row' : isDocument ? 'pr-document-row' : '';
+            const values = report.cohorts.map(cohort => {
+                const value = !cohort.total ? '-' : isPresented || isDocument ? ratio(cohort[key], cohort.total) : cohort[key];
+                return `<td>${value}</td>`;
+            }).join('');
+            return `<tr${rowClass ? ` class="${rowClass}"` : ''}><th scope="row">${label}</th>${values}</tr>`;
+        }).join('');
         const chart = report.levels.map(level => `<div class="pr-level"><strong>${level ? `ชั้นปี ${level}` : 'ไม่ระบุชั้นปี'}</strong>${report.cohorts.map((cohort, index) => {
             const bucket = counts(cohort.rows.filter(row => row.level === level));
             return `<div class="pr-chart-row pr-series-${index}"><span>${escape(cohort.label)}</span><span class="pr-track" aria-hidden="true"><span style="width:${bucket.rate ?? 0}%"></span></span><span>${ratio(bucket.presented, bucket.total)}</span></div>`;

@@ -75,6 +75,16 @@ test('document scope filters summaries and detail links without changing course 
     }
 });
 
+test('the summary highlights only visible document totals separately from presentations', () => {
+    const expected = { mco34: ['3-4'], mco56: ['5-6'], all: ['3-4', '5-6'] };
+    for (const [documentScope, types] of Object.entries(expected)) {
+        const report = Report.build([course({ presented: true, upload: true })], { ...compare, documentScope });
+        const html = Report.summaryHtml(report);
+        assert.match(html, /<tr class="pr-primary-row"><th scope="row">นำเสนอแล้ว<\/th>/);
+        assert.deepEqual([...html.matchAll(/<tr class="pr-document-row"><th scope="row">ส่ง มคอ\.([35]-[46]) แล้ว<\/th>/g)].map(match => match[1]), types);
+    }
+});
+
 test('an explicit MCO 5-6 selection makes follow-up check that type, while all keeps the original rule', () => {
     const report = Report.build([course({ presented: true, upload: true }), course({ id: 'x', presented: true, upload56: true })], compare);
     assert.deepEqual(report.rows.filter(row => Report.needsFollowUp(row, 'all')).map(row => row.id), ['x']);
