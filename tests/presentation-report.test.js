@@ -105,3 +105,11 @@ test('report has an independent tab and does not add an Apps Script trigger', ()
     assert.match(html, /AgendaExport\.createReportPdf/);
     assert.doesNotMatch(html, /ScriptApp\.newTrigger|sendApcrisReminders/);
 });
+
+test('report page pins the asset version and checks document filtering support', () => {
+    const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
+    const version = html.match(/APP_VERSION = 'v([\d.]+)'/)[1];
+    assert.ok(html.includes(`src="presentation-report.js?v=${version}"`));
+    assert.equal(Report.documentScopeVersion, 1);
+    assert.match(html, /window\.PresentationReport\?\.documentScopeVersion !== 1/);
+});

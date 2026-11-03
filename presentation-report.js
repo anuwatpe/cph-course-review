@@ -121,7 +121,7 @@
 
     function needsFollowUp(row, documentScope) { return row.status !== 'presented' || !(documentScope === 'mco56' ? row.upload56 : row.upload); }
 
-    const api = { periods, build, summaryHtml, tableHead, rowHtml, needsFollowUp };
+    const api = { documentScopeVersion: 1, periods, build, summaryHtml, tableHead, rowHtml, needsFollowUp };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.PresentationReport = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

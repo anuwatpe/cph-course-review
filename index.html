@@ -459,7 +459,7 @@
             <label id="reportYearLabel" class="text-sm text-slate-600">ปีการศึกษา<select id="reportYear" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2 min-w-28"></select></label>
             <label id="reportTermLabel" class="text-sm text-slate-600 hidden">ภาคการศึกษา<select id="reportTerm" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2 min-w-28"></select></label>
             <label class="text-sm text-slate-600">เอกสาร<select id="reportDocumentScope" class="block mt-1 border border-slate-300 rounded-md bg-white px-3 py-2">
-                <option value="all">ทั้งสองประเภท</option><option value="mco34">มคอ.3-4</option><option value="mco56">มคอ.5-6</option>
+                <option value="all">ทั้งหมด</option><option value="mco34">มคอ.3-4</option><option value="mco56">มคอ.5-6</option>
             </select></label>
         </div>
         <p id="reportExportStatus" class="text-sm text-slate-600 mt-3 empty:hidden" role="status" aria-live="polite"></p>
@@ -502,9 +502,9 @@
 
     <script src="booking-sync.js"></script>
     <script src="agenda-export.js"></script>
-    <script src="presentation-report.js"></script>
+    <script src="presentation-report.js?v=1.4.2"></script>
     <script>
-        const APP_VERSION = 'v1.4.1';
+        const APP_VERSION = 'v1.4.2';
         const APP_RELEASE_DATE = '3 พฤศจิกายน 2569';
 
         // Tab switching
@@ -840,6 +840,7 @@
         }
 
         function reportModel() {
+            if (window.PresentationReport?.documentScopeVersion !== 1) return null;
             return PresentationReport.build(globalData, { mode: document.querySelector('[name="reportMode"]:checked').value,
                 term: document.getElementById('reportTerm').value, year: document.getElementById('reportYear').value,
                 documentScope: document.getElementById('reportDocumentScope').value }, lastBookingMerge?.issues || []);
@@ -861,6 +862,14 @@
 
         function renderReport() {
             if (document.getElementById('reportView').classList.contains('hidden')) return;
+            if (window.PresentationReport?.documentScopeVersion !== 1) {
+                document.querySelectorAll('#reportView input, #reportView select').forEach(control => { control.disabled = true; });
+                document.getElementById('exportReportPdfBtn').disabled = true;
+                document.getElementById('reportDetails').classList.add('hidden');
+                document.getElementById('reportDataStatus').textContent = '';
+                document.getElementById('reportSummary').innerHTML = '<p class="pr-alert">โหลดไฟล์รายงานไม่ได้หรือไฟล์ไม่ตรงรุ่น กรุณาโหลดหน้าใหม่ หากยังไม่หายให้ตรวจว่าได้อัปเดต presentation-report.js พร้อมกับหน้าเว็บแล้ว</p>';
+                return;
+            }
             const { terms, years } = PresentationReport.periods(globalData);
             for (const [id, values] of [['reportTerm', terms], ['reportYear', years]]) {
                 const select = document.getElementById(id);
