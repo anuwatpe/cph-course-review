@@ -445,9 +445,19 @@
     <section id="reportView" class="pr hidden" role="tabpanel" aria-labelledby="tabReport">
         <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
             <h2 class="text-xl font-medium text-slate-900">รายงานผลการนำเสนอรายวิชา</h2>
-            <button id="exportReportPdfBtn" type="button" disabled class="inline-flex items-center gap-2 text-sm bg-primary hover:bg-blue-700 text-white rounded-md px-3 py-2 disabled:opacity-40">
-                <i data-lucide="file-down" class="w-4 h-4"></i>ส่งออก PDF
-            </button>
+            <div class="flex flex-wrap gap-2">
+                <button id="exportReportPdfBtn" type="button" disabled class="inline-flex items-center gap-2 text-sm bg-primary hover:bg-blue-700 text-white rounded-md px-3 py-2 disabled:opacity-40">
+                    <i data-lucide="file-down" class="w-4 h-4"></i>ส่งออก PDF
+                </button>
+                <div class="flex flex-wrap gap-2">
+                    <select id="reportImageScope" aria-label="หน้าที่ส่งออกเป็นภาพ" class="text-sm text-slate-700 border border-slate-300 rounded-md bg-white px-2 py-2">
+                        <option value="all">สรุปและรายละเอียด</option><option value="summary">เฉพาะหน้าสรุป</option><option value="details">เฉพาะรายละเอียด</option>
+                    </select>
+                    <button id="exportReportImageBtn" type="button" disabled class="inline-flex items-center gap-2 text-sm text-primary border border-blue-200 rounded-md px-3 py-2 bg-white hover:bg-blue-50 disabled:opacity-40">
+                        <i data-lucide="image-down" class="w-4 h-4"></i>ส่งออกภาพ
+                    </button>
+                </div>
+            </div>
         </div>
         <div class="flex flex-wrap items-end gap-3 border-y border-slate-200 bg-white p-4">
             <fieldset><legend class="text-sm text-slate-600 mb-1">มุมมองรายงาน</legend>
@@ -490,7 +500,7 @@
             <button id="closeAgendaImageDialog" type="button" title="ปิดหน้าต่างรูปภาพ" aria-label="ปิดหน้าต่างรูปภาพ" class="w-10 h-10 inline-flex items-center justify-center rounded-md hover:bg-slate-100"><i data-lucide="x" class="w-5 h-5"></i></button>
         </div>
         <div class="p-5">
-            <label class="block text-sm text-slate-600 mb-4">วันประชุม / หน้าเอกสาร
+            <label class="block text-sm text-slate-600 mb-4"><span id="imageExportPageLabel">วันประชุม / หน้าเอกสาร</span>
                 <select id="agendaImagePageSelect" disabled class="mt-1.5 block w-full rounded-md border border-slate-300 bg-white px-3 py-2.5"></select>
             </label>
             <p id="agendaImageProgress" class="text-sm text-slate-500 mb-3" role="status" aria-live="polite"></p>
@@ -512,10 +522,10 @@
     </footer>
 
     <script src="booking-sync.js"></script>
-    <script src="agenda-export.js"></script>
-    <script src="presentation-report.js?v=1.4.3"></script>
+    <script src="agenda-export.js?v=1.4.4"></script>
+    <script src="presentation-report.js?v=1.4.4"></script>
     <script>
-        const APP_VERSION = 'v1.4.3';
+        const APP_VERSION = 'v1.4.4';
         const APP_RELEASE_DATE = '3 พฤศจิกายน 2569';
 
         // Tab switching
@@ -559,6 +569,7 @@
         let visibleScheduleGroups = [];
         let exportingAgenda = false;
         let imageExportAbort = null;
+        let imageExportRelease = null;
         let imageExportPages = [];
         const BOOKING_EDIT_URL = 'https://docs.google.com/spreadsheets/d/196bNk_5oN-vo-zP0eiDTM610Oq09j7Pz4J50YPvOTKw/edit?gid=0';
 
@@ -866,7 +877,7 @@
             }) : [];
         }
 
-        function reportPdfSubtitle(report, rows) {
+        function reportExportSubtitle(report, rows) {
             const filters = [['reportPresentationStatus', 'นำเสนอ'], ['reportDocumentStatus', 'เอกสาร']].flatMap(([id, label]) => {
                 const select = document.getElementById(id);
                 return select.value === 'all' ? [] : [`${label}: ${select.selectedOptions[0].text}`];
@@ -889,11 +900,24 @@
             return '';
         }
 
+        function reportExportSnapshot(report, rows) {
+            return { title: report.title, subtitle: reportExportSubtitle(report, rows), filename: report.filename,
+                summaryHtml: PresentationReport.summaryHtml(report), tableHead: PresentationReport.tableHead,
+                rows: rows.map(row => PresentationReport.rowHtml(row, report.documentScope)),
+                source: reportDataLabel(), warning: reportWarning(), createdAt: reportTime(new Date()), version: APP_VERSION };
+        }
+
+        function updateReportExportButtons(report = reportModel(), rows = reportDetailRows(report)) {
+            const summaryOnly = document.getElementById('reportImageScope').value === 'summary';
+            document.getElementById('exportReportPdfBtn').disabled = exportingReport || !rows.length;
+            document.getElementById('exportReportImageBtn').disabled = exportingReport || !(summaryOnly ? report?.rows.length : rows.length);
+        }
+
         function renderReport() {
             if (document.getElementById('reportView').classList.contains('hidden')) return;
             if (window.PresentationReport?.reportApiVersion !== 2) {
                 document.querySelectorAll('#reportView input, #reportView select').forEach(control => { control.disabled = true; });
-                document.getElementById('exportReportPdfBtn').disabled = true;
+                updateReportExportButtons(null);
                 document.getElementById('reportDetails').classList.add('hidden');
                 document.getElementById('reportDataStatus').textContent = '';
                 document.getElementById('reportSummary').innerHTML = '<p class="pr-alert">โหลดไฟล์รายงานไม่ได้หรือไฟล์ไม่ตรงรุ่น กรุณาโหลดหน้าใหม่ หากยังไม่หายให้ตรวจว่าได้อัปเดต presentation-report.js พร้อมกับหน้าเว็บแล้ว</p>';
@@ -917,7 +941,7 @@
             partialOption.hidden = partialOption.disabled = report?.documentScope !== 'all';
             if (partialOption.disabled && documentStatus.value === 'partial') documentStatus.value = 'all';
             const rows = reportDetailRows(report);
-            document.getElementById('exportReportPdfBtn').disabled = exportingReport || !rows.length;
+            updateReportExportButtons(report, rows);
             document.getElementById('reportSummary').innerHTML = report?.rows.length ? PresentationReport.summaryHtml(report) : '<p class="pr-note">ยังไม่มีข้อมูลรายวิชาสำหรับรายงาน</p>';
             document.getElementById('reportDetails').classList.toggle('hidden', !report?.rows.length);
             if (!report?.rows.length) return;
@@ -930,21 +954,38 @@
             const rows = reportDetailRows(report);
             if (exportingReport || !rows.length) return;
             exportingReport = true;
-            document.getElementById('exportReportPdfBtn').disabled = true;
+            updateReportExportButtons(report, rows);
             const status = document.getElementById('reportExportStatus');
             status.textContent = 'กำลังจัดหน้ารายงาน PDF...';
             try {
-                const result = await AgendaExport.createReportPdf({ title: report.title, subtitle: reportPdfSubtitle(report, rows), filename: report.filename,
-                    summaryHtml: PresentationReport.summaryHtml(report), tableHead: PresentationReport.tableHead, rows: rows.map(row => PresentationReport.rowHtml(row, report.documentScope)),
-                    source: reportDataLabel(), warning: reportWarning(), createdAt: reportTime(new Date()), version: APP_VERSION }, message => { status.textContent = message; });
+                const result = await AgendaExport.createReportPdf(reportExportSnapshot(report, rows), message => { status.textContent = message; });
                 downloadAgendaFile(result.blob, result.filename);
                 status.textContent = `สร้าง PDF แล้ว ${result.pageCount} หน้า`;
             } catch (error) { status.textContent = error.message || 'ส่งออกรายงานไม่สำเร็จ'; }
-            finally { exportingReport = false; document.getElementById('exportReportPdfBtn').disabled = !reportDetailRows(reportModel()).length; }
+            finally { exportingReport = false; updateReportExportButtons(); }
         }
 
-        document.querySelectorAll('#reportView input, #reportView select').forEach(control => control.addEventListener('change', renderReport));
+        function openReportImageExport() {
+            const report = reportModel();
+            const imageScope = document.getElementById('reportImageScope').value;
+            const summaryOnly = imageScope === 'summary';
+            const rows = reportDetailRows(report);
+            if (exportingReport || imageExportAbort || !(summaryOnly ? report?.rows.length : rows.length)) return;
+            const snapshot = { ...reportExportSnapshot(report, summaryOnly ? [] : rows), imageScope };
+            if (summaryOnly) snapshot.subtitle = report.subtitle;
+            exportingReport = true; updateReportExportButtons(report, rows);
+            openImageExport((progress, signal) => {
+                if (!window.AgendaExport?.createReportImages) throw new Error('ไฟล์ส่งออกไม่ตรงรุ่น กรุณาโหลดหน้าใหม่');
+                return AgendaExport.createReportImages(snapshot, progress, signal);
+            }, 'รูปภาพรายงานผลการนำเสนอรายวิชา', 'หน้าเอกสาร', () => {
+                exportingReport = false; updateReportExportButtons();
+            });
+        }
+
+        document.querySelectorAll('#reportView input, #reportView select:not(#reportImageScope)').forEach(control => control.addEventListener('change', renderReport));
+        document.getElementById('reportImageScope').addEventListener('change', () => updateReportExportButtons());
         document.getElementById('exportReportPdfBtn').addEventListener('click', exportPresentationPdf);
+        document.getElementById('exportReportImageBtn').addEventListener('click', openReportImageExport);
 
         function scheduleStatus(entry) {
             if (entry.issue) return 'issue';
@@ -1076,17 +1117,27 @@
             finally { exportingAgenda = false; updateAgendaExportButtons(); }
         }
 
-        async function openScheduleImageExport() {
-            if (exportingAgenda || !visibleScheduleGroups.length) return;
+        function openScheduleImageExport() {
+            if (exportingAgenda || imageExportAbort || !visibleScheduleGroups.length) return;
             const snapshot = agendaExportSnapshot();
+            exportingAgenda = true; updateAgendaExportButtons();
+            openImageExport((progress, signal) => AgendaExport.createImages(snapshot, progress, signal),
+                'รูปภาพกำหนดการ', 'วันประชุม / หน้าเอกสาร', () => {
+                    exportingAgenda = false; updateAgendaExportButtons();
+                });
+        }
+
+        async function openImageExport(createPages, title, pageLabel, release) {
             const dialog = document.getElementById('agendaImageDialog');
             const controller = new AbortController(); imageExportAbort = controller;
-            exportingAgenda = true; updateAgendaExportButtons();
+            imageExportRelease = release;
+            document.getElementById('agendaImageDialogTitle').textContent = title;
+            document.getElementById('imageExportPageLabel').textContent = pageLabel;
             document.getElementById('agendaImageProgress').textContent = 'กำลังจัดหน้ารูปภาพ...';
             document.getElementById('agendaImagePageSelect').replaceChildren(new Option('กำลังสร้างรูปภาพ...', ''));
             dialog.showModal();
             try {
-                const pages = await AgendaExport.createImages(snapshot, message => {
+                const pages = await createPages(message => {
                     if (!controller.signal.aborted) document.getElementById('agendaImageProgress').textContent = message;
                 }, controller.signal);
                 if (controller.signal.aborted) return;
@@ -1096,15 +1147,13 @@
                 imageExportPages.forEach((page, index) => select.add(new Option(page.label, String(index))));
                 select.disabled = false;
                 document.getElementById('agendaImageProgress').textContent = `${pages.length} รูปภาพ`;
-                showAgendaImagePage();
+                showImageExportPage();
             } catch (error) {
-                if (error.name !== 'AbortError') document.getElementById('agendaImageProgress').textContent = error.message || 'สร้างรูปภาพไม่สำเร็จ';
-            } finally {
-                if (imageExportAbort === controller) { exportingAgenda = false; updateAgendaExportButtons(); }
+                if (!controller.signal.aborted && error.name !== 'AbortError') document.getElementById('agendaImageProgress').textContent = error.message || 'สร้างรูปภาพไม่สำเร็จ';
             }
         }
 
-        function showAgendaImagePage() {
+        function showImageExportPage() {
             const page = imageExportPages[Number(document.getElementById('agendaImagePageSelect').value)];
             if (!page) return;
             const image = document.getElementById('agendaImagePreview');
@@ -1119,7 +1168,7 @@
 
         document.getElementById('exportSchedulePdfBtn').addEventListener('click', exportSchedulePdf);
         document.getElementById('exportScheduleImageBtn').addEventListener('click', openScheduleImageExport);
-        document.getElementById('agendaImagePageSelect').addEventListener('change', showAgendaImagePage);
+        document.getElementById('agendaImagePageSelect').addEventListener('change', showImageExportPage);
         document.getElementById('closeAgendaImageDialog').addEventListener('click', () => document.getElementById('agendaImageDialog').close());
         document.getElementById('agendaImageDialog').addEventListener('click', event => {
             if (event.target === event.currentTarget) event.currentTarget.close();
@@ -1132,7 +1181,8 @@
             document.getElementById('downloadAgendaImageBtn').disabled = true;
             document.getElementById('shareAgendaImageBtn').classList.add('hidden');
             document.getElementById('agendaImageMeta').textContent = '';
-            exportingAgenda = false; updateAgendaExportButtons();
+            const release = imageExportRelease; imageExportRelease = null;
+            release?.();
         });
         document.getElementById('downloadAgendaImageBtn').addEventListener('click', () => {
             const page = imageExportPages[Number(document.getElementById('agendaImagePageSelect').value)];
@@ -1141,7 +1191,8 @@
         document.getElementById('shareAgendaImageBtn').addEventListener('click', async () => {
             const page = imageExportPages[Number(document.getElementById('agendaImagePageSelect').value)];
             if (!page) return;
-            try { await navigator.share({ files: [new File([page.blob], page.filename, { type: 'image/png' })], title: 'APCRIS - กำหนดการประชุมวิพากษ์รายวิชา' }); }
+            const title = document.getElementById('agendaImageDialogTitle').textContent;
+            try { await navigator.share({ files: [new File([page.blob], page.filename, { type: 'image/png' })], title: `APCRIS - ${title}` }); }
             catch (error) { if (error.name !== 'AbortError') document.getElementById('agendaImageProgress').textContent = 'แชร์รูปไม่ได้ กรุณาดาวน์โหลด PNG'; }
         });
 

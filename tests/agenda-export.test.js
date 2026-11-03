@@ -1,7 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
-const { rowHtml, filename, safeUrl } = require('../agenda-export.js');
+const { rowHtml, filename, safeUrl, createReportImages } = require('../agenda-export.js');
 
 const entry = overrides => ({
     row: 5, code: '202300319', name: 'การวิจัยด้านสาธารณสุข 2', level: '3',
@@ -51,9 +51,15 @@ test('export rejects non-HTTPS URLs and authentication embedded in URLs', () => 
     assert.equal(safeUrl('https://teams.microsoft.com/meet/123'), 'https://teams.microsoft.com/meet/123');
 });
 
+test('report images reject empty detail lists before loading browser libraries', async () => {
+    await assert.rejects(createReportImages({ rows: [] }), /ไม่มีรายวิชาสำหรับส่งออกรายงาน/);
+});
+
 test('the release and footer badge use one updated version and the current release date', () => {
     const html = fs.readFileSync(require.resolve('../index.html'), 'utf8');
-    assert.match(html, /APP_VERSION = 'v1\.4\.3'/);
+    const version = html.match(/APP_VERSION = 'v([\d.]+)'/)[1];
+    assert.equal(version, '1.4.4');
+    assert.ok(html.includes(`src="agenda-export.js?v=${version}"`));
     assert.match(html, /APP_RELEASE_DATE = '3 พฤศจิกายน 2569'/);
     assert.match(html, /getElementById\('footerVersion'\)\.innerText = APP_VERSION/);
 });

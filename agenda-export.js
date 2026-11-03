@@ -65,6 +65,18 @@
         .ae-image .ae-status,.ae-image .ae-issue{font-size:18px;margin-top:5px}
         .ae-image .ae-footer{font-size:15px;padding-top:14px;margin-top:20px}
         .ae-image .ae-stale{font-size:16px}
+        .ae-report-content{padding-top:16px}
+        .ae-report-heading{font-size:17px;font-weight:600;margin:0 0 12px}
+        .ae-report-image .ae-report-content{padding-top:24px}
+        .ae-report-image .ae-report-heading{font-size:26px;margin-bottom:16px}
+        .ae-report-image .pr-overview{gap:24px}
+        .ae-report-image h3{font-size:21px}
+        .ae-report-image .pr-table{font-size:17px}
+        .ae-report-image .pr-table th,.ae-report-image .pr-table td{padding:11px 10px}
+        .ae-report-image .pr-table small,.ae-report-image .pr-note,.ae-report-image .pr-alert{font-size:15px}
+        .ae-report-image .pr-level{font-size:17px;padding:12px 0}
+        .ae-report-image .pr-chart-row{font-size:15px;grid-template-columns:88px minmax(0,1fr) 132px}
+        .ae-report-image .pr-track{height:11px}
         .ae-room{margin-top:8px;font-size:16px;color:#475569}
         .ae-room img{width:100px;height:100px;display:inline-block;vertical-align:middle;margin-right:12px;image-rendering:pixelated}
     `;
@@ -239,10 +251,10 @@
         } finally { stage.remove(); }
     }
 
-    async function createReportPdf(snapshot, progress) {
-        if (!snapshot.rows.length) throw new Error('ไม่มีรายวิชาสำหรับส่งออกรายงาน');
-        await Promise.all([loadLibrary('pdf', () => typeof root.jspdf?.jsPDF === 'function'),
-            loadLibrary('canvas', () => typeof root.html2canvas === 'function'), root.document.fonts.ready]);
+    async function layoutReport(snapshot, kind, signal, scope = 'all') {
+        if (scope !== 'summary' && !snapshot.rows.length) throw new Error('ไม่มีรายวิชาสำหรับส่งออกรายงาน');
+        await Promise.all([loadLibrary('canvas', () => typeof root.html2canvas === 'function'), root.document.fonts.ready]);
+        abortIfNeeded(signal);
         const stage = root.document.createElement('div');
         stage.id = 'report-export-stage'; stage.inert = true; stage.setAttribute('aria-hidden', 'true');
         stage.style.cssText = 'position:absolute;left:-100000px;top:0;pointer-events:none;';
@@ -251,57 +263,84 @@
         try {
             const pages = [];
             const addPage = (label, html) => {
-                stage.insertAdjacentHTML('beforeend', `<section class="ae-page pr pr-print">
+                stage.insertAdjacentHTML('beforeend', `<section class="ae-page pr pr-print${kind === 'image' ? ' ae-image ae-report-image' : ''}">
                     <header class="ae-header"><p class="ae-system-name">${SYSTEM_NAME}</p><p class="ae-brand">${SYSTEM_NAME_TH} / สาขาวิชาสาธารณสุขชุมชน</p>
                     <h1 class="ae-title">${escape(snapshot.title)}</h1><p class="ae-term">${escape(snapshot.subtitle)}</p></header>
-                    <div class="ae-content" style="padding-top:16px"><h2 style="font-size:17px;font-weight:600;margin:0 0 12px">${label}</h2>${html}</div>
+                    <div class="ae-content ae-report-content"><h2 class="ae-report-heading">${label}</h2>${html}</div>
                     <footer class="ae-footer"><div class="ae-footer-top"><span class="ae-footer-left">${escape(snapshot.source)}<br>จัดทำ ${escape(snapshot.createdAt)} / ${SYSTEM_NAME} ${escape(snapshot.version)}</span><span class="ae-page-number"></span></div>${snapshot.warning ? `<div class="ae-stale">${escape(snapshot.warning)}</div>` : ''}</footer></section>`);
                 const element = stage.lastElementChild;
-                pages.push({ element });
+                pages.push({ element, label });
                 return element.querySelector('.ae-content');
             };
             const overflows = content => content.scrollHeight > content.clientHeight + 1;
-            const cover = addPage('ภาพรวมประจำรอบ', snapshot.summaryHtml);
-            if (overflows(cover)) throw new Error('ข้อมูลสรุปมีขนาดเกินหน้า PDF');
-            const detailTable = `<table class="pr-table">${snapshot.tableHead}<tbody></tbody></table>`;
-            let content = addPage('รายละเอียดรายวิชา', detailTable);
-            let body = content.querySelector('tbody');
-            for (const row of snapshot.rows) {
-                body.insertAdjacentHTML('beforeend', row);
-                if (!overflows(content)) continue;
-                body.lastElementChild.remove();
-                if (!body.children.length) throw new Error('รายละเอียดบางรายวิชายาวเกินหน้า PDF');
-                content = addPage('รายละเอียดรายวิชา (ต่อ)', detailTable);
-                body = content.querySelector('tbody');
-                body.insertAdjacentHTML('beforeend', row);
-                if (overflows(content)) throw new Error('รายละเอียดบางรายวิชายาวเกินหน้า PDF');
+            if (scope !== 'details') {
+                const cover = addPage('ภาพรวมประจำรอบ', snapshot.summaryHtml);
+                if (overflows(cover)) throw new Error('ข้อมูลสรุปมีขนาดเกินหนึ่งหน้า');
+            }
+            if (scope !== 'summary') {
+                const detailTable = `<table class="pr-table">${snapshot.tableHead}<tbody></tbody></table>`;
+                let content = addPage('รายละเอียดรายวิชา', detailTable);
+                let body = content.querySelector('tbody');
+                for (const row of snapshot.rows) {
+                    body.insertAdjacentHTML('beforeend', row);
+                    if (!overflows(content)) continue;
+                    body.lastElementChild.remove();
+                    if (!body.children.length) throw new Error('รายละเอียดบางรายวิชายาวเกินหนึ่งหน้า');
+                    content = addPage('รายละเอียดรายวิชา (ต่อ)', detailTable);
+                    body = content.querySelector('tbody');
+                    body.insertAdjacentHTML('beforeend', row);
+                    if (overflows(content)) throw new Error('รายละเอียดบางรายวิชายาวเกินหนึ่งหน้า');
+                }
             }
             pages.forEach(({ element }, index) => { element.querySelector('.ae-page-number').textContent = `หน้า ${index + 1} / ${pages.length}`; });
+            return { stage, pages };
+        } catch (error) { stage.remove(); throw error; }
+    }
+
+    async function createReportPdf(snapshot, progress) {
+        await loadLibrary('pdf', () => typeof root.jspdf?.jsPDF === 'function');
+        const { stage, pages } = await layoutReport(snapshot, 'pdf');
+        try {
             const blob = await renderPdf(pages, snapshot.title, progress);
             return { blob, filename: snapshot.filename, pageCount: pages.length };
         } finally { stage.remove(); }
     }
 
-    async function createImages(snapshot, progress, signal) {
-        const { stage, pages } = await layout(snapshot, 'image', signal);
+    async function renderImages({ stage, pages }, describe, progress, signal) {
         try {
             const images = [];
             for (let index = 0; index < pages.length; index++) {
                 progress?.(`กำลังสร้างรูปภาพ ${index + 1}/${pages.length}`);
                 const page = pages[index];
                 const canvas = await capture(page.element, signal);
-                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-                const width = canvas.width; const height = canvas.height;
-                canvas.width = 0; canvas.height = 0;
-                if (!blob) throw new Error('สร้างรูปภาพไม่สำเร็จ');
-                images.push({ blob, width, height, filename: filename(page.day.key, 'image', page.dayPage, page.dayPages),
-                    label: `${page.day.label}${page.dayPages > 1 ? ` (หน้า ${page.dayPage}/${page.dayPages})` : ''}` });
+                try {
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    abortIfNeeded(signal);
+                    if (!blob) throw new Error('สร้างรูปภาพไม่สำเร็จ');
+                    images.push({ blob, width: canvas.width, height: canvas.height, ...describe(page, index, pages.length) });
+                } finally { canvas.width = 0; canvas.height = 0; }
             }
             return images;
         } finally { stage.remove(); }
     }
 
-    const api = { createPdf, createReportPdf, createImages, rowHtml, filename, safeUrl };
+    async function createImages(snapshot, progress, signal) {
+        return renderImages(await layout(snapshot, 'image', signal), page => ({
+            filename: filename(page.day.key, 'image', page.dayPage, page.dayPages),
+            label: `${page.day.label}${page.dayPages > 1 ? ` (หน้า ${page.dayPage}/${page.dayPages})` : ''}`
+        }), progress, signal);
+    }
+
+    async function createReportImages(snapshot, progress, signal) {
+        const scope = snapshot.imageScope;
+        const suffix = scope === 'summary' ? '-summary' : scope === 'details' ? '-details' : '';
+        return renderImages(await layoutReport(snapshot, 'image', signal, scope), (page, index, total) => ({
+            filename: `${snapshot.filename.replace(/\.pdf$/i, '')}${suffix}${total > 1 ? `-p${index + 1}` : ''}.png`,
+            label: total > 1 ? `${page.label} (หน้า ${index + 1}/${total})` : page.label
+        }), progress, signal);
+    }
+
+    const api = { createPdf, createReportPdf, createReportImages, createImages, rowHtml, filename, safeUrl };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.AgendaExport = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
